@@ -8,17 +8,22 @@
 # Definitions #
 # ----------- #
 
-TARGETS = crosscc
+EXECUTABLES = crosscc test/crosscc_test
+
+TARGETS = $(EXECUTABLES) check-win-api
 
 CC = clang
 
 CFLAGS = -std=c11 -Weverything -g -I ./src \
-         -Wno-unsafe-buffer-usage
+         -Wno-unsafe-buffer-usage \
+         -Wno-used-but-marked-unused
 
 SUPPORT_FILES = src/support/greatest.h \
                 src/support/solog.h
 
-DEPS = $(TARGETS:=.d)
+DEPS = $(EXECUTABLES:=.d)
+
+JSON = $(EXECUTABLES:=.json)
 
 
 # ----- #
@@ -30,13 +35,18 @@ all: $(TARGETS)
 FORCE:
 
 clean: FORCE
-	$(RM) $(TARGETS:=.o) $(TARGETS:=.d) $(TARGETS)
+	$(RM) $(EXECUTABLES:=.o) $(EXECUTABLES:=.d) $(EXECUTABLES) check-win-api
 
 mrproper: clean
 	$(RM) $(SUPPORT_FILES)
 
 test: test/crosscc_test FORCE
 	./test/crosscc_test
+
+check-win-api: $(EXECUTABLES:=.c) Makefile $(SUPPORT_FILES)
+	echo "CC    $@"
+	x86_64-w64-mingw32-clang $(CFLAGS) -fsyntax-only $(EXECUTABLES:=.c)
+	touch $@
 
 crosscc: crosscc.o
 	echo "LD    $@"
@@ -46,11 +56,11 @@ test/crosscc_test: test/crosscc_test.o
 	echo "LD    $@"
 	$(CC) $(CFLAGS) $(LDFLAGS) test/crosscc_test.o -o $@
 
-$(TARGETS:=.o): Makefile $(SUPPORT_FILES)
+$(EXECUTABLES:=.o): Makefile $(SUPPORT_FILES)
 
 .c.o:
 	echo "CC    $@"
-	$(CC) $(CFLAGS) -MMD -MF $(@:.o=.d) -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MF $(@:.o=.d) -MJ $*.json -c $< -o $@
 
 $(DEPS):
 	touch $@
