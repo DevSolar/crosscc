@@ -1,11 +1,15 @@
 /.cache
-/check-win-api.d
+/check-win-api
 /compile_commands.json
 /crosscc
 /crosscc.exe
+/crosscc.json
 /crosscc.d
 /crosscc.o
+/crosscc.o.json
 /test/crosscc_test
 /test/crosscc_test.exe
+/test/crosscc_test.json
 /test/crosscc_test.d
 /test/crosscc_test.o
+/test/crosscc_test.o.json

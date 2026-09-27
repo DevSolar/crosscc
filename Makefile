@@ -10,7 +10,7 @@
 
 EXECUTABLES = crosscc test/crosscc_test
 
-TARGETS = $(EXECUTABLES) check-win-api
+TARGETS = $(EXECUTABLES) check-win-api compile_commands.json
 
 CC = clang
 
@@ -39,6 +39,8 @@ FORCE:
 
 clean: FORCE
 	$(RM) $(EXECUTABLES:=.o) $(EXECUTABLES:=.d) $(EXECUTABLES) check-win-api
+	$(RM) $(EXECUTABLES:=.o) $(EXECUTABLES:=.d) $(EXECUTABLES) check-win-api compile_commands.json
+	$(RM) $(EXECUTABLES:=.json)
 
 mrproper: clean
 	$(RM) $(SUPPORT_FILES)
@@ -50,6 +52,12 @@ check-win-api: $(EXECUTABLES:=.c) Makefile $(SUPPORT_FILES)
 	echo "CC    $@"
 	x86_64-w64-mingw32-clang $(CFLAGS) -fsyntax-only $(EXECUTABLES:=.c)
 	touch $@
+
+compile_commands.json: $(EXECUTABLES:=.o)
+	echo "IDX   $@"
+	echo "[" > $@
+	cat $(JSON) | sed '$$s/,$$//' >> $@
+	echo "]" >> $@
 
 crosscc: crosscc.o
 	echo "LD    $@"
