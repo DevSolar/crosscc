@@ -4,3 +4,7 @@
 /crosscc.exe
 /crosscc.d
 /crosscc.o
+/test/crosscc_test
+/test/crosscc_test.exe
+/test/crosscc_test.d
+/test/crosscc_test.o

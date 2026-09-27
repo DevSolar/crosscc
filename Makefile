@@ -15,7 +15,8 @@ CC = clang
 CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-unsafe-buffer-usage
 
-SUPPORT_FILES = src/support/solog.h
+SUPPORT_FILES = src/support/greatest.h \
+                src/support/solog.h
 
 DEPS = $(TARGETS:=.d)
 
@@ -34,9 +35,16 @@ clean: FORCE
 mrproper: clean
 	$(RM) $(SUPPORT_FILES)
 
+test: test/crosscc_test FORCE
+	./test/crosscc_test
+
 crosscc: crosscc.o
 	echo "LD    $@"
 	$(CC) $(CFLAGS) $(LDFLAGS) crosscc.o -o $@
+
+test/crosscc_test: test/crosscc_test.o
+	echo "LD    $@"
+	$(CC) $(CFLAGS) $(LDFLAGS) test/crosscc_test.o -o $@
 
 $(TARGETS:=.o): Makefile $(SUPPORT_FILES)
 
@@ -53,6 +61,11 @@ include $(DEPS)
 # ------------- #
 # Support files #
 # ------------- #
+
+# GreaTest v1.5.0
+src/support/greatest.h:
+	echo "GET   $(@F)"
+	curl -sSL "https://raw.githubusercontent.com/silentbicycle/greatest/refs/tags/v1.5.0/$(@F)" -o $@
 
 # SoLog v10
 src/support/solog.h:
