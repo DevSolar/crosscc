@@ -15,18 +15,27 @@ TARGETS = $(EXECUTABLES) check-win-api compile_commands.json
 CC = clang
 
 CFLAGS = -std=c11 -Weverything -g -I ./src \
+         -Wno-c++-keyword \
          -Wno-cast-align \
          -Wno-cast-qual \
+         -Wno-implicit-void-ptr-cast \
+         -Wno-pre-c11-compat \
+         -Wno-unknown-warning-option \
          -Wno-unsafe-buffer-usage \
+         -Wno-unused-macros \
          -Wno-used-but-marked-unused
+
+MODULES = src/utils
+
+TEST_MODULES = test/utils_test
 
 SUPPORT_FILES = src/support/cc.h \
                 src/support/greatest.h \
                 src/support/solog.h
 
-DEPS = $(EXECUTABLES:=.d)
+DEPS = $(EXECUTABLES:=.d) $(MODULES:=.d) $(TEST_MODULES:=.d)
 
-JSON = $(EXECUTABLES:=.json)
+JSON = $(EXECUTABLES:=.json) $(MODULES:=.json) $(TEST_MODULES:=.json)
 
 
 # ----- #
@@ -38,9 +47,11 @@ all: $(TARGETS)
 FORCE:
 
 clean: FORCE
-	$(RM) $(EXECUTABLES:=.o) $(EXECUTABLES:=.d) $(EXECUTABLES) check-win-api
-	$(RM) $(EXECUTABLES:=.o) $(EXECUTABLES:=.d) $(EXECUTABLES) check-win-api compile_commands.json
-	$(RM) $(EXECUTABLES:=.json)
+	$(RM) check-win-api compile_commands.json
+	$(RM) $(EXECUTABLES:=.o) $(EXECUTABLES:=.d) $(EXECUTABLES:=.json) $(EXECUTABLES)
+	$(RM) $(MODULES:=.o) $(TEST_MODULES:=.o)
+	$(RM) $(MODULES:=.d) $(TEST_MODULES:=.d)
+	$(RM) $(MODULES:=.json) $(TEST_MODULES:=.json)
 
 mrproper: clean
 	$(RM) $(SUPPORT_FILES)
@@ -48,26 +59,26 @@ mrproper: clean
 test: test/crosscc_test FORCE
 	./test/crosscc_test
 
-check-win-api: $(EXECUTABLES:=.c) Makefile $(SUPPORT_FILES)
+check-win-api: $(EXECUTABLES:=.c) $(MODULES:=.c) Makefile $(SUPPORT_FILES)
 	echo "CC    $@"
-	x86_64-w64-mingw32-clang $(CFLAGS) -fsyntax-only $(EXECUTABLES:=.c)
+	x86_64-w64-mingw32-clang $(CFLAGS) -fsyntax-only $(EXECUTABLES:=.c) $(MODULES:=.c)
 	touch $@
 
-compile_commands.json: $(EXECUTABLES:=.o)
+compile_commands.json: $(EXECUTABLES:=.o) $(MODULES:=.o)
 	echo "IDX   $@"
 	echo "[" > $@
 	cat $(JSON) | sed '$$s/,$$//' >> $@
 	echo "]" >> $@
 
-crosscc: crosscc.o
+crosscc: crosscc.o $(MODULES:=.o)
 	echo "LD    $@"
-	$(CC) $(CFLAGS) $(LDFLAGS) crosscc.o -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) crosscc.o $(MODULES:=.o) -o $@
 
-test/crosscc_test: test/crosscc_test.o
+test/crosscc_test: test/crosscc_test.o $(TEST_MODULES:=.o) $(MODULES:=.o)
 	echo "LD    $@"
-	$(CC) $(CFLAGS) $(LDFLAGS) test/crosscc_test.o -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) test/crosscc_test.o $(TEST_MODULES:=.o) $(MODULES:=.o) -o $@
 
-$(EXECUTABLES:=.o): Makefile $(SUPPORT_FILES)
+$(MODULES:=.o) $(TEST_MODULES:=.o) $(EXECUTABLES:=.o): Makefile $(SUPPORT_FILES)
 
 .c.o:
 	echo "CC    $@"

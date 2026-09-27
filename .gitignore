@@ -7,9 +7,15 @@
 /crosscc.d
 /crosscc.o
 /crosscc.o.json
+/src/utils.d
+/src/utils.o
+/src/utils.json
 /test/crosscc_test
 /test/crosscc_test.exe
 /test/crosscc_test.json
 /test/crosscc_test.d
 /test/crosscc_test.o
 /test/crosscc_test.o.json
+/test/utils_test.d
+/test/utils_test.o
+/test/utils_test.json
