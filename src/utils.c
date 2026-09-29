@@ -13,7 +13,12 @@
 
 int stricmp( char const * lhs, char const * rhs )
 {
-    SOLOG( TRACE, "stricmp( \"%s\", \"%s\" )", lhs, rhs );
+    SOLOG( TRACE, "stricmp( \"%s\", \"%s\" )", lhs ? lhs : "(null)", rhs ? rhs : "(null)" );
+
+    if ( ! lhs || ! rhs )
+    {
+        SOLOG( WARN, "stricmp called with NULL pointer (lhs=%p, rhs=%p)", (void *)lhs, (void *)rhs );
+    }
 
     while ( *lhs && ( tolower( (unsigned char)*lhs ) == tolower( (unsigned char)*rhs ) ) )
     {
@@ -26,7 +31,12 @@ int stricmp( char const * lhs, char const * rhs )
 
 int strnicmp( char const * lhs, char const * rhs, size_t n )
 {
-    SOLOG( TRACE, "strnicmp( \"%s\", \"%s\", %zu )", lhs, rhs, n );
+    SOLOG( TRACE, "strnicmp( \"%s\", \"%s\", %zu )", lhs ? lhs : "(null)", rhs ? rhs : "(null)", n );
+
+    if ( ! lhs || ! rhs )
+    {
+        SOLOG( WARN, "strnicmp called with NULL pointer (lhs=%p, rhs=%p)", (void *)lhs, (void *)rhs );
+    }
 
     while ( n && *lhs && ( tolower( (unsigned char)*lhs ) == tolower( (unsigned char)*rhs ) ) )
     {
@@ -47,7 +57,12 @@ int strnicmp( char const * lhs, char const * rhs, size_t n )
 
 int strvicmp( char const * lhs, char const * rhs )
 {
-    SOLOG( TRACE, "strvicmp( \"%s\", \"%s\" )", lhs, rhs );
+    SOLOG( TRACE, "strvicmp( \"%s\", \"%s\" )", lhs ? lhs : "(null)", rhs ? rhs : "(null)" );
+
+    if ( ! lhs || ! rhs )
+    {
+        SOLOG( WARN, "strvicmp called with NULL pointer (lhs=%p, rhs=%p)", (void *)lhs, (void *)rhs );
+    }
 
     for (;;)
     {
@@ -78,6 +93,11 @@ char * strrpbrk( strspan_t * span, char const * c )
 {
     SOLOG( TRACE, "strrpbrk( %p, \"%s\" )", (void *)span, c ? c : "(null)" );
 
+    if ( ! span || ! c )
+    {
+        SOLOG( WARN, "strrpbrk called with NULL argument (span=%p, c=%p)", (void *)span, (void *)c );
+    }
+
     if ( span && span->begin && span->end && c && *c && ( span->end > span->begin ) )
     {
         char const * p = span->end - 1;
@@ -86,6 +106,7 @@ char * strrpbrk( strspan_t * span, char const * c )
         {
             if ( ( *p != '\0' ) && ( strchr( c, *p ) != NULL ) )
             {
+                SOLOG( TRACE, "strrpbrk(...) -> %p", (void *)p );
                 return (char *)p;
             }
 
@@ -93,6 +114,7 @@ char * strrpbrk( strspan_t * span, char const * c )
         }
     }
 
+    SOLOG( TRACE, "strrpbrk(...) -> NULL" );
     return NULL;
 }
 
@@ -110,6 +132,8 @@ bool file_readable( char const * filename )
             SOLOG( TRACE, "file_readable( \"%s\" ) -> %s", filename, readable ? "true" : "false" );
             return readable;
         }
+
+        SOLOG( TRACE, "stat( \"%s\" ) failed: %s", filename, strerror( errno ) );
     }
 
     SOLOG( TRACE, "file_readable( \"%s\" ) -> false", filename ? filename : "(null)" );
@@ -130,6 +154,8 @@ bool dir_readable( char const * dirname )
             SOLOG( TRACE, "dir_readable( \"%s\" ) -> %s", dirname, readable ? "true" : "false" );
             return readable;
         }
+
+        SOLOG( TRACE, "stat( \"%s\" ) failed: %s", dirname, strerror( errno ) );
     }
 
     SOLOG( TRACE, "dir_readable( \"%s\" ) -> false", dirname ? dirname : "(null)" );
@@ -204,9 +230,16 @@ int get_line( FILE * fh, string * line, int * lineno )
 
     SOLOG( TRACE, "get_line(...)" );
 
-    if ( fh == NULL || line == NULL || lineno == NULL || *lineno == INT_MAX )
+    if ( fh == NULL || line == NULL || lineno == NULL )
     {
-        SOLOG( WARN, "Invalid arguments" );
+        SOLOG( WARN, "get_line() called with invalid NULL argument (fh=%p, line=%p, lineno=%p)",
+               (void *)fh, (void *)line, (void *)lineno );
+        return -1;
+    }
+
+    if ( *lineno == INT_MAX )
+    {
+        SOLOG( WARN, "get_line() lineno counter reached INT_MAX" );
         return -1;
     }
 
@@ -330,7 +363,9 @@ int foreach( char const * list, char const * delims, bool (*callback)( string *,
                     }
                     else
                     {
-                        bool cb_result = callback( &token, userdata );
+                        bool cb_result;
+                        SOLOG( TRACE, "foreach parsed quoted token '%s'", first( &token ) );
+                        cb_result = callback( &token, userdata );
                         ++count;
                         cleanup( &token );
 
@@ -363,6 +398,7 @@ int foreach( char const * list, char const * delims, bool (*callback)( string *,
                 init( &token );
                 push_n( &token, span.begin, (size_t)( span.end - span.begin ) );
                 span.begin = span.end;
+                SOLOG( TRACE, "foreach parsed token '%s'", first( &token ) );
                 cb_result = callback( &token, userdata );
                 ++count;
                 cleanup( &token );
@@ -374,6 +410,10 @@ int foreach( char const * list, char const * delims, bool (*callback)( string *,
                 }
             }
         }
+    }
+    else
+    {
+        SOLOG( TRACE, "foreach() list is empty or NULL" );
     }
 
     SOLOG( TRACE, "foreach() -> %d tokens processed", count );
@@ -426,6 +466,10 @@ static bool find_first_cb( string * dir_token, void * udata )
         SOLOG( DEBUG, "find_first_cb matched readable file: \"%s\"", first( &path ) );
         push_fmt( ctx->result, first( &path ) );
     }
+    else
+    {
+        SOLOG( TRACE, "find_first_cb path not readable: \"%s\"", first( &path ) );
+    }
 
     cleanup( &path );
     return size( ctx->result ) == 0;
@@ -468,6 +512,10 @@ string find_first( vec( candidate_t ) candidates )
                     break;
                 }
             }
+            else
+            {
+                SOLOG( DEBUG, "find_first envvar '%s' is not set or empty, skipping candidate", candidate->env );
+            }
         }
         else if ( candidate->path && *candidate->path )
         {
@@ -481,6 +529,10 @@ string find_first( vec( candidate_t ) candidates )
                 break;
             }
         }
+        else
+        {
+            SOLOG( WARN, "find_first encountered candidate with neither envvar nor path" );
+        }
     }
 
     if ( size( &result ) == 0 )
@@ -488,6 +540,7 @@ string find_first( vec( candidate_t ) candidates )
         SOLOG( DEBUG, "find_first found no matching candidate" );
     }
 
+    SOLOG( TRACE, "find_first(...) -> \"%s\"", first( &result ) );
     return result;
 }
 
