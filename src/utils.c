@@ -76,7 +76,9 @@ int strvicmp( char const * lhs, char const * rhs )
 
 char * strrpbrk( strspan_t * span, char const * c )
 {
-    if ( span->begin && span->end && c && *c && ( span->end > span->begin ) )
+    SOLOG( TRACE, "strrpbrk( %p, \"%s\" )", (void *)span, c ? c : "(null)" );
+
+    if ( span && span->begin && span->end && c && *c && ( span->end > span->begin ) )
     {
         char const * p = span->end - 1;
 
@@ -104,10 +106,13 @@ bool file_readable( char const * filename )
 
         if ( ! stat( filename, &st ) )
         {
-            return S_ISREG( st.st_mode ) && ( st.st_mode & S_IRUSR );
+            bool readable = S_ISREG( st.st_mode ) && ( st.st_mode & S_IRUSR );
+            SOLOG( TRACE, "file_readable( \"%s\" ) -> %s", filename, readable ? "true" : "false" );
+            return readable;
         }
     }
 
+    SOLOG( TRACE, "file_readable( \"%s\" ) -> false", filename ? filename : "(null)" );
     return false;
 }
 
@@ -121,10 +126,13 @@ bool dir_readable( char const * dirname )
 
         if ( ! stat( dirname, &st ) )
         {
-            return S_ISDIR( st.st_mode ) && ( st.st_mode & S_IRUSR );
+            bool readable = S_ISDIR( st.st_mode ) && ( st.st_mode & S_IRUSR );
+            SOLOG( TRACE, "dir_readable( \"%s\" ) -> %s", dirname, readable ? "true" : "false" );
+            return readable;
         }
     }
 
+    SOLOG( TRACE, "dir_readable( \"%s\" ) -> false", dirname ? dirname : "(null)" );
     return false;
 }
 
@@ -266,9 +274,15 @@ int foreach( char const * list, char const * delims, bool (*callback)( string *,
 {
     int count = 0;
 
-    SOLOG( TRACE, "foreach( \"%s\", \"%s\", ... )", list, delims ? delims : "(null)" );
+    SOLOG( TRACE, "foreach( \"%s\", \"%s\", ... )", list ? list : "(null)", delims ? delims : "(null)" );
 
-    if ( list && *list && callback )
+    if ( ! callback )
+    {
+        SOLOG( ERR, "foreach() called with (null) callback" );
+        return -1;
+    }
+
+    if ( list && *list )
     {
         strspan_t span = { list, NULL };
 
@@ -362,6 +376,7 @@ int foreach( char const * list, char const * delims, bool (*callback)( string *,
         }
     }
 
+    SOLOG( TRACE, "foreach() -> %d tokens processed", count );
     return count;
 }
 
@@ -403,9 +418,12 @@ static bool find_first_cb( string * dir_token, void * udata )
         push_fmt( &path, subpath );
     }
 
+    SOLOG( TRACE, "find_first_cb testing path: \"%s\"", first( &path ) );
+
     /* Test */
     if ( file_readable( first( &path ) ) )
     {
+        SOLOG( DEBUG, "find_first_cb matched readable file: \"%s\"", first( &path ) );
         push_fmt( ctx->result, first( &path ) );
     }
 
@@ -418,6 +436,8 @@ string find_first( vec( candidate_t ) candidates )
     string result;
     init( &result );
 
+    SOLOG( TRACE, "find_first( %zu candidates )", size( &candidates ) );
+
     /* Iterate through candidate_t list */
     for_each( &candidates, candidate )
     {
@@ -425,6 +445,9 @@ string find_first( vec( candidate_t ) candidates )
         {
             /* Candidate has an environment variable specified */
             char const * envvar = getenv( candidate->env );
+
+            SOLOG( DEBUG, "find_first checking envvar '%s' (value: '%s') with subpath '%s'",
+                   candidate->env, envvar ? envvar : "(null)", candidate->path ? candidate->path : "" );
 
             if ( envvar && *envvar )
             {
@@ -441,19 +464,28 @@ string find_first( vec( candidate_t ) candidates )
 
                 if ( size( ctx.result ) > 0 )
                 {
+                    SOLOG( DEBUG, "find_first candidate '%s' resolved to: \"%s\"", candidate->env, first( &result ) );
                     break;
                 }
             }
         }
         else if ( candidate->path && *candidate->path )
         {
+            SOLOG( DEBUG, "find_first checking verbatim path '%s'", candidate->path );
+
             /* No environment variable: Check candidate->path directly. */
             if ( file_readable( candidate->path ) )
             {
+                SOLOG( DEBUG, "find_first verbatim path matched: \"%s\"", candidate->path );
                 push_fmt( &result, candidate->path );
                 break;
             }
         }
+    }
+
+    if ( size( &result ) == 0 )
+    {
+        SOLOG( DEBUG, "find_first found no matching candidate" );
     }
 
     return result;
