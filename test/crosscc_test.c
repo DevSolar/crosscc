@@ -7,6 +7,7 @@
 
 SUITE_EXTERN( utils_suite );
 SUITE_EXTERN( context_suite );
+SUITE_EXTERN( options_suite );
 
 GREATEST_MAIN_DEFS();
 
@@ -16,5 +17,6 @@ int main( int argc, char * argv[] )
     solog_config.level = SOLOG_LVL_FAIL;
     RUN_SUITE( utils_suite );
     RUN_SUITE( context_suite );
+    RUN_SUITE( options_suite );
     GREATEST_MAIN_END();
 }

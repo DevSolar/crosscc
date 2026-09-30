@@ -1,4 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 
 #include "support/greatest.h"
@@ -402,6 +404,127 @@ TEST test_find_first( void )
     PASS();
 }
 
+TEST test_spantol( void )
+{
+    char const * endptr;
+    strspan_t span;
+    char overflow[] = "9999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999999_";
+    char non_null_term[] = "12345extra";
+    char whitespace_test[] = " \n\v\t\f789";
+    char spaces[] = "   ";
+    char plus[] = "+";
+    char minus[] = "-";
+
+    errno = 0;
+
+    /* basic functionality */
+    span = (strspan_t){ "123", &"123"[3] };
+    ASSERT_EQ( 123, spantol( &span, NULL ) );
+
+    /* plus sign not accepted */
+    span = (strspan_t){ "+456", &"+456"[4] };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    /* base 10 interpretation of leading zeros (no octal) */
+    span = (strspan_t){ "016", &"016"[3] };
+    ASSERT_EQ( 16, spantol( &span, NULL ) );
+
+    /* no hexadecimal autodetection: stops at 'x' */
+    span = (strspan_t){ "0xFF", &"0xFF"[4] };
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == &"0xFF"[1] );
+
+    /* errno should still be 0 */
+    ASSERT_EQ( 0, errno );
+
+    /* correctly decoding zero */
+    span = (strspan_t){ "0", &"0"[1] };
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.end );
+    ASSERT_EQ( 0, errno );
+
+    /* overflowing subject sequence returns LONG_MAX and sets ERANGE */
+    span = (strspan_t){ overflow, overflow + strlen( overflow ) };
+    ASSERT_EQ( LONG_MAX, spantol( &span, &endptr ) );
+    ASSERT_EQ( ERANGE, errno );
+    ASSERT( *endptr == '_' );
+    ASSERT_EQ( strlen( overflow ) - 1, (size_t)( endptr - overflow ) );
+
+    /* leading whitespace not skipped (conversion fails) */
+    span = (strspan_t){ whitespace_test, whitespace_test + 8 };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    /* negative numbers not accepted (positive numbers only) */
+    span = (strspan_t){ "-123", &"-123"[4] };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    /* non-null-terminated span (stops at span.end) */
+    span = (strspan_t){ non_null_term, non_null_term + 5 };
+    ASSERT_EQ( 12345, spantol( &span, &endptr ) );
+    ASSERT( endptr == non_null_term + 5 );
+
+    /* boundary tests */
+    errno = 0;
+#if LONG_MAX >> 30 == 1
+    span = (strspan_t){ "2147483647", &"2147483647"[10] };
+    ASSERT_EQ( 0x7fffffffL, spantol( &span, NULL ) );
+    ASSERT_EQ( 0, errno );
+
+    errno = 0;
+    span = (strspan_t){ "2147483648", &"2147483648"[10] };
+    ASSERT_EQ( LONG_MAX, spantol( &span, NULL ) );
+    ASSERT_EQ( ERANGE, errno );
+#elif LONG_MAX >> 62 == 1
+    span = (strspan_t){ "9223372036854775807", &"9223372036854775807"[19] };
+    ASSERT_EQ( 0x7fffffffffffffffL, spantol( &span, NULL ) );
+    ASSERT_EQ( 0, errno );
+
+    errno = 0;
+    span = (strspan_t){ "9223372036854775808", &"9223372036854775808"[19] };
+    ASSERT_EQ( LONG_MAX, spantol( &span, NULL ) );
+    ASSERT_EQ( ERANGE, errno );
+#endif
+
+    /* empty / invalid spans */
+    span = (strspan_t){ "", "" };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    span = (strspan_t){ spaces, spaces + 3 };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    span = (strspan_t){ plus, plus + 1 };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    span = (strspan_t){ minus, minus + 1 };
+    endptr = NULL;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == span.begin );
+
+    /* NULL span / pointers */
+    endptr = (char const *)0x1;
+    ASSERT_EQ( 0, spantol( NULL, &endptr ) );
+    ASSERT( endptr == NULL );
+
+    span = (strspan_t){ NULL, NULL };
+    endptr = (char const *)0x1;
+    ASSERT_EQ( 0, spantol( &span, &endptr ) );
+    ASSERT( endptr == NULL );
+
+    PASS();
+}
+
 SUITE( utils_suite )
 {
     RUN_TEST( test_stricmp );
@@ -416,4 +539,5 @@ SUITE( utils_suite )
     RUN_TEST( test_get_line );
     RUN_TEST( test_foreach );
     RUN_TEST( test_find_first );
+    RUN_TEST( test_spantol );
 }
