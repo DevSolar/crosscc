@@ -24,6 +24,11 @@ int strvicmp( char const * lhs, char const * rhs );
  */
 char * strrpbrk( strspan_t * span, char const * c );
 
+/* parse a positive base-10 integer from span.
+ * sets *endp to the first non-digit character, or span->begin on failure.
+ */
+long spantol( strspan_t * span, char const ** endp );
+
 /* returns true if 'filename' identifies a readable, regular file */
 bool file_readable( char const * filename );
 /* returns true if 'dirname' identifies a readable directory */

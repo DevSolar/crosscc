@@ -3,9 +3,13 @@
 
 #include <sys/stat.h>
 
-#include <errno.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef _WIN32
 #define stat _stat
@@ -116,6 +120,86 @@ char * strrpbrk( strspan_t * span, char const * c )
 
     SOLOG( TRACE, "strrpbrk(...) -> NULL" );
     return NULL;
+}
+
+long spantol( strspan_t * span, char const ** endp )
+{
+    char const * p;
+    char const * end;
+    long rc = 0;
+    long const limval = LONG_MAX / 10;
+    int const limdigit = (int)( LONG_MAX % 10 );
+    int digit = -1;
+
+    SOLOG( TRACE, "spantol( %p, %p )", (void *)span, (void *)endp );
+
+    if ( ! span || ! span->begin || ! span->end )
+    {
+        SOLOG( WARN, "spantol called with NULL argument (span=%p)", (void *)span );
+
+        if ( endp != NULL )
+        {
+            *endp = ( span && span->begin ) ? span->begin : NULL;
+        }
+
+        return 0;
+    }
+
+    if ( span->begin > span->end )
+    {
+        SOLOG( WARN, "spantol called with invalid span (begin > end)" );
+
+        if ( endp != NULL )
+        {
+            *endp = span->begin;
+        }
+
+        return 0;
+    }
+
+    p = span->begin;
+    end = span->end;
+
+    while ( ( p < end ) && isdigit( (unsigned char)*p ) )
+    {
+        digit = *p - '0';
+
+        if ( ( rc < limval ) || ( ( rc == limval ) && ( digit <= limdigit ) ) )
+        {
+            rc = rc * 10 + digit;
+            ++p;
+        }
+        else
+        {
+            errno = ERANGE;
+
+            while ( ( p < end ) && isdigit( (unsigned char)*p ) )
+            {
+                ++p;
+            }
+
+            rc = LONG_MAX;
+            break;
+        }
+    }
+
+    if ( digit == -1 )
+    {
+        if ( endp != NULL )
+        {
+            *endp = span->begin;
+        }
+
+        return 0;
+    }
+
+    if ( endp != NULL )
+    {
+        *endp = p;
+    }
+
+    SOLOG( TRACE, "spantol(...) -> %ld", rc );
+    return rc;
 }
 
 bool file_readable( char const * filename )

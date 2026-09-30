@@ -26,9 +26,11 @@ CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-used-but-marked-unused
 
 MODULES = src/context \
+          src/options \
           src/utils
 
 TEST_MODULES = test/context_test \
+               test/options_test \
                test/utils_test
 
 SUPPORT_FILES = src/support/cc.h \
