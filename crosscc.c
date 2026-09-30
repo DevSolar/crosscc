@@ -9,6 +9,8 @@
 #endif
 #include "support/solog.h"
 
+#include "context.h"
+
 int main( void )
 {
     string s;
@@ -16,6 +18,8 @@ int main( void )
     push_fmt( &s, "CrossCC started." );
 
     SOLOG( INFO, first( &s ) );
+
+    help();
 
     cleanup( &s );
 }
