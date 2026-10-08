@@ -21,4 +21,14 @@ bool touch( vec( string ) );
 bool link( vec( string ) );
 bool unpack( vec( string ) );
 
+/* Internal use */
+
+typedef struct
+{
+    char const * flag;
+    bool is_set;
+} tool_flag_t;
+
+void tool_flags( vec( string ) * options, tool_flag_t * flags );
+
 #endif
