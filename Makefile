@@ -26,7 +26,9 @@ CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-used-but-marked-unused
 
 MODULES = src/context \
+          src/execute \
           src/options \
+          src/tools \
           src/utils
 
 TEST_MODULES = test/context_test \

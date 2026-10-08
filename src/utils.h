@@ -33,6 +33,8 @@ long spantol( strspan_t * span, char const ** endp );
 bool file_readable( char const * filename );
 /* returns true if 'dirname' identifies a readable directory */
 bool dir_readable( char const * dirname );
+/* returns true if 'lhs' has a later modification date than 'rhs' */
+bool is_newer( char const * lhs, char const * rhs );
 
 /* trims trailing whitespace from s */
 void rtrim( char * s );

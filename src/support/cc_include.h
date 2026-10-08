@@ -21,8 +21,4 @@ typedef str( char ) string;
 #pragma clang diagnostic pop
 #endif
 
-#ifndef cc_foreach
-#define cc_foreach( ... ) for_each( __VA_ARGS__ )
-#endif
-
 #endif

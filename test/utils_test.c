@@ -81,6 +81,40 @@ TEST test_dir_readable( void )
     PASS();
 }
 
+TEST test_is_newer( void )
+{
+    FILE * f1;
+    FILE * f2;
+
+    ASSERT_EQ( false, is_newer( NULL, NULL ) );
+    ASSERT_EQ( false, is_newer( "Makefile", NULL ) );
+    ASSERT_EQ( false, is_newer( NULL, "Makefile" ) );
+    ASSERT_EQ( false, is_newer( "", "" ) );
+    ASSERT_EQ( false, is_newer( "non_existent_1", "non_existent_2" ) );
+    ASSERT_EQ( false, is_newer( "non_existent_1", "Makefile" ) );
+
+    ASSERT_EQ( true, is_newer( "Makefile", "non_existent_rhs" ) );
+    ASSERT_EQ( false, is_newer( "Makefile", "Makefile" ) );
+
+    f1 = fopen( "tmp_test_older.tmp", "w" );
+    ASSERT( f1 != NULL );
+    fputs( "a", f1 );
+    fclose( f1 );
+
+    f2 = fopen( "tmp_test_newer.tmp", "w" );
+    ASSERT( f2 != NULL );
+    fputs( "b", f2 );
+    fclose( f2 );
+
+    ASSERT_EQ( true, is_newer( "tmp_test_newer.tmp", "non_existent_target" ) );
+    ASSERT_EQ( false, is_newer( "tmp_test_older.tmp", "tmp_test_older.tmp" ) );
+
+    remove( "tmp_test_older.tmp" );
+    remove( "tmp_test_newer.tmp" );
+
+    PASS();
+}
+
 TEST test_rtrim( void )
 {
     char buf1[] = "hello   ";
@@ -532,6 +566,7 @@ SUITE( utils_suite )
     RUN_TEST( test_strvicmp );
     RUN_TEST( test_file_readable );
     RUN_TEST( test_dir_readable );
+    RUN_TEST( test_is_newer );
     RUN_TEST( test_rtrim );
     RUN_TEST( test_rtrim_str );
     RUN_TEST( test_ltrim );

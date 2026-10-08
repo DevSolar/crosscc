@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#define _POSIX_C_SOURCE 200809L
+#endif
+
 #include "utils.h"
 #include "support/solog.h"
 
@@ -244,6 +248,58 @@ bool dir_readable( char const * dirname )
 
     SOLOG( TRACE, "dir_readable( \"%s\" ) -> false", dirname ? dirname : "(null)" );
     return false;
+}
+
+/* Return true if file 'lhs' has a modification date
+ * newer than that of file 'rhs'
+ */
+bool is_newer( char const * lhs, char const * rhs )
+{
+    struct stat st_lhs;
+    struct stat st_rhs;
+    bool newer;
+
+    SOLOG( TRACE, "is_newer( \"%s\", \"%s\" )", lhs ? lhs : "(null)", rhs ? rhs : "(null)" );
+
+    if ( ! lhs || ! *lhs || ! rhs || ! *rhs )
+    {
+        SOLOG( TRACE, "is_newer(...) -> false (invalid argument)" );
+        return false;
+    }
+
+    if ( stat( lhs, &st_lhs ) != 0 )
+    {
+        SOLOG( TRACE, "stat( \"%s\" ) failed: %s", lhs, strerror( errno ) );
+        return false;
+    }
+
+    if ( stat( rhs, &st_rhs ) != 0 )
+    {
+        if ( errno == ENOENT )
+        {
+            SOLOG( TRACE, "rhs \"%s\" does not exist; lhs is newer -> true", rhs );
+            return true;
+        }
+
+        SOLOG( TRACE, "stat( \"%s\" ) failed: %s", rhs, strerror( errno ) );
+        return false;
+    }
+
+#ifdef _WIN32
+    newer = st_lhs.st_mtime > st_rhs.st_mtime;
+#else
+    if ( st_lhs.st_mtime != st_rhs.st_mtime )
+    {
+        newer = st_lhs.st_mtime > st_rhs.st_mtime;
+    }
+    else
+    {
+        newer = st_lhs.st_mtim.tv_nsec > st_rhs.st_mtim.tv_nsec;
+    }
+#endif
+
+    SOLOG( TRACE, "is_newer( \"%s\", \"%s\" ) -> %s", lhs, rhs, newer ? "true" : "false" );
+    return newer;
 }
 
 void rtrim( char * s )
