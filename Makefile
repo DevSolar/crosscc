@@ -25,6 +25,9 @@ CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-unused-macros \
          -Wno-used-but-marked-unused
 
+# Required on Termux/Android to pick up post-API24 posix_spawnp
+LDFLAGS = -L/system/lib64
+
 MODULES = src/context \
           src/execute \
           src/options \
