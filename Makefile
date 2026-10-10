@@ -36,6 +36,7 @@ MODULES = src/context \
 
 TEST_MODULES = test/context_test \
                test/options_test \
+               test/tools_test \
                test/utils_test
 
 SUPPORT_FILES = src/support/cc.h \

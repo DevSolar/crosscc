@@ -34,6 +34,9 @@
 /test/options_test.d
 /test/options_test.o
 /test/options_test.json
+/test/tools_test.d
+/test/tools_test.o
+/test/tools_test.json
 /test/utils_test.d
 /test/utils_test.o
 /test/utils_test.json
