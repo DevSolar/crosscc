@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <spawn.h>
 #include <time.h>
 #include <utime.h>
 #endif
@@ -884,7 +885,9 @@ bool rm( vec( string ) * options )
     size_t count;
     string * opt;
     char const * path;
-#ifndef _WIN32
+#ifdef _WIN32
+    DWORD attr;
+#else
     struct stat st;
 #endif
 
@@ -912,8 +915,7 @@ bool rm( vec( string ) * options )
         opt = get( options, i );
         path = first( opt );
 #ifdef _WIN32
-        DWORD attr = GetFileAttributesA( path );
-
+        attr = GetFileAttributesA( path );
         if ( attr == INVALID_FILE_ATTRIBUTES )
         {
             if ( ! force )
@@ -1035,7 +1037,9 @@ bool touch( vec( string ) * options )
     size_t count;
     string * opt;
     char const * path;
-#ifndef _WIN32
+#ifdef _WIN32
+    DWORD attr;
+#else
     struct stat st;
 #endif
 
@@ -1067,8 +1071,7 @@ bool touch( vec( string ) * options )
         }
 
 #ifdef _WIN32
-        DWORD attr = GetFileAttributesA( path );
-
+        attr = GetFileAttributesA( path );
         if ( attr == INVALID_FILE_ATTRIBUTES )
         {
             if ( create )
