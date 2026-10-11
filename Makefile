@@ -41,6 +41,7 @@ TEST_MODULES = test/context_test \
 
 SUPPORT_FILES = src/support/cc.h \
                 src/support/greatest.h \
+                src/support/lonesha256.h \
                 src/support/solog.h
 
 DEPS = $(EXECUTABLES:=.d) $(MODULES:=.d) $(TEST_MODULES:=.d)
@@ -113,6 +114,11 @@ src/support/cc.h:
 src/support/greatest.h:
 	echo "GET   $(@F)"
 	curl -sSL "https://raw.githubusercontent.com/silentbicycle/greatest/refs/tags/v1.5.0/$(@F)" -o $@
+
+# LoneSHA256
+src/support/lonesha256.h:
+	echo "GET   $(@F)"
+	curl -sSL "https://raw.githubusercontent.com/DevSolar/lonesha256/refs/tags/v2.0/$(@F)" -o $@
 
 # SoLog v10
 src/support/solog.h:
