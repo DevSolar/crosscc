@@ -15,6 +15,7 @@ TARGETS = $(EXECUTABLES) check-win-api compile_commands.json
 CC = clang
 
 CFLAGS = -std=c11 -Weverything -g -I ./src \
+         -DGREATEST_STDOUT=stderr \
          -Wno-c++-keyword \
          -Wno-cast-align \
          -Wno-cast-qual \
