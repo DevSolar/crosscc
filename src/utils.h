@@ -74,9 +74,7 @@ typedef struct
 
 string find_first( vec( candidate_t ) candidates );
 
-/* get a setting from context; returns empty string if setting
- * is not found.
- */
-string get_setting( char const * section, char const * key );
+/* get a setting from context; returns NULL if setting is not found. */
+string * get_setting( char const * section, char const * key );
 
 #endif

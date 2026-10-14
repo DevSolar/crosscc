@@ -18,6 +18,7 @@ CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-c++-keyword \
          -Wno-cast-align \
          -Wno-cast-qual \
+         -Wno-covered-switch-default \
          -Wno-implicit-void-ptr-cast \
          -Wno-pre-c11-compat \
          -Wno-unknown-warning-option \
@@ -26,10 +27,12 @@ CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-used-but-marked-unused
 
 MODULES = src/context \
+          src/expand \
           src/options \
           src/utils
 
 TEST_MODULES = test/context_test \
+               test/expand_test \
                test/options_test \
                test/utils_test
 

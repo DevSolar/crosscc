@@ -41,6 +41,7 @@ void parse_options( int argc, char * argv[] )
         if ( strncmp( argv[i], "-Wx,", 4 ) == 0 )
         {
             SOLOG( TRACE, "'%s': CrossCC option", argv[i] );
+
             if ( foreach( argv[i] + 4, ",", parse_option, NULL ) <= 0 )
             {
                 SOLOG( ERR, "Failed to parse options from '%s'", argv[i] );

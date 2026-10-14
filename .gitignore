@@ -10,6 +10,9 @@
 /src/context.d
 /src/context.o
 /src/context.json
+/src/expand.d
+/src/expand.o
+/src/expand.json
 /src/options.d
 /src/options.o
 /src/options.json
@@ -25,6 +28,9 @@
 /test/context_test.d
 /test/context_test.o
 /test/context_test.json
+/test/expand_test.d
+/test/expand_test.o
+/test/expand_test.json
 /test/options_test.d
 /test/options_test.o
 /test/options_test.json

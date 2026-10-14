@@ -1,4 +1,6 @@
 #include "utils.h"
+
+#include "context.h"
 #include "support/solog.h"
 
 #include <sys/stat.h>
@@ -628,18 +630,13 @@ string find_first( vec( candidate_t ) candidates )
     return result;
 }
 
-/*
-string get_setting( char const * section, char const * key )
+string * get_setting( char const * section, char const * key )
 {
-    string result;
-
-    init( &result );
+    string * value = NULL;
 
     if ( ( section && *section ) || ( key && *key ) )
     {
         string full_key;
-        string * value;
-
         init( &full_key );
 
         if ( section && *section )
@@ -658,15 +655,8 @@ string get_setting( char const * section, char const * key )
         }
 
         value = get( &g_ctx.settings, first( &full_key ) );
-
-        if ( value && size( value ) )
-        {
-            push_fmt( &result, first( value ) );
-        }
-
         cleanup( &full_key );
     }
 
-    return result;
+    return value;
 }
-*/
