@@ -3,6 +3,8 @@
 #include "utils.h"
 #include "support/solog.h"
 
+#include <dirent.h>
+
 #include <stdarg.h>
 #include <stdlib.h>
 
@@ -198,6 +200,8 @@ void expand_env( string * input, strspan_t * span )
 
 void expand_latest( string * input, strspan_t * span )
 {
+    size_t const prefix_len = macro_type_map[ STR_LATEST ].len;
+
     if ( ! input || ! span || ! span->begin || ! span->end || span->begin >= span->end )
     {
         return;
@@ -205,13 +209,94 @@ void expand_latest( string * input, strspan_t * span )
 
     if ( span->end == span->begin + 1 + prefix_len + 1 )
     {
-        /* no extra letters */
-        /* t.b.d.: get latest version matching prefix */
+        strspan_t prefix = { first( input ), span->begin };
+        strspan_t suffix = { span->end, end( input ) };
+        strspan_t dirpath = { prefix.begin, strrpbrk( &prefix, "\\/" ) };
+        strspan_t candidate_prefix;
+        strspan_t candidate_suffix = { suffix.begin, strpbrk( suffix.begin, "\\/" ) };
+        strspan_t path_suffix;
+        size_t dirpath_len, candidate_prefix_len, candidate_suffix_len;
+        DIR * dir;
+        string buf;
+        string latest;
+        init( &buf );
+        init( &latest );
+
+        dirpath.end = dirpath.end ? dirpath.end + 1 : dirpath.begin;
+        dirpath_len = (size_t)( dirpath.end - dirpath.begin );
+
+        candidate_prefix = (strspan_t){ dirpath.end, prefix.end };
+        candidate_prefix_len = (size_t)( candidate_prefix.end - candidate_prefix.begin );
+
+        candidate_suffix.end = candidate_suffix.end ? candidate_suffix.end : suffix.end;
+        candidate_suffix_len = (size_t)( candidate_suffix.end - candidate_suffix.begin );
+
+        path_suffix = (strspan_t){ candidate_suffix.end, suffix.end };
+
+        push_n( &buf, dirpath.begin, dirpath_len );
+
+        if ( size( &buf ) == 0 )
+        {
+            push_fmt( &buf, "." );
+        }
+
+        dir = opendir( first( &buf ) );
+
+        if ( dir )
+        {
+            struct dirent * entry;
+            string version;
+            init( &version );
+
+            while ( ( entry = readdir( dir ) ) )
+            {
+                size_t d_name_len = strlen( entry->d_name );
+
+                if ( ( d_name_len == 1 && entry->d_name[0] == '.' ) || ( d_name_len == 2 && entry->d_name[0] == '.' && entry->d_name[1] == '.' ) )
+                {
+                    continue;
+                }
+
+                if ( d_name_len >= candidate_prefix_len + candidate_suffix_len &&
+                     strncmp( entry->d_name, candidate_prefix.begin, candidate_prefix_len ) == 0 &&
+                     strncmp( entry->d_name + d_name_len - candidate_suffix_len, candidate_suffix.begin, candidate_suffix_len ) == 0 )
+                {
+                    clear( &buf );
+                    push_n( &buf, dirpath.begin, dirpath_len );
+                    push_fmt( &buf, entry->d_name, path_suffix.begin );
+
+                    if ( file_readable( first( &buf ) ) || dir_readable( first( &buf ) ) )
+                    {
+                        push_n( &version, entry->d_name + candidate_prefix_len, d_name_len - candidate_prefix_len - candidate_suffix_len );
+
+                        if ( size( &latest ) == 0 )
+                        {
+                            push_fmt( &latest, first( &version ) );
+                        }
+                        else if ( strvicmp( first( &version ), first( &latest ) ) > 0 )
+                        {
+                            clear( &latest );
+                            push_fmt( &latest, first( &version ) );
+                        }
+
+                        clear( &version );
+                    }
+                }
+            }
+
+            cleanup( &version );
+            closedir( dir );
+        }
+
+        replace_span( input, span, size( &latest ) > 0 ? first( &latest ) : NULL, size( &latest ) );
+        cleanup( &latest );
+        cleanup( &buf );
     }
 }
 
 void expand_default( string * input, strspan_t * span )
 {
+    char const * val = NULL;
     size_t const prefix_len = macro_type_map[ STR_DEFAULT ].len;
 
     if ( ! input || ! span || ! span->begin || ! span->end || span->begin >= span->end )
@@ -221,7 +306,26 @@ void expand_default( string * input, strspan_t * span )
 
     if ( span->end > span->begin + 1 + prefix_len + 1 )
     {
-        /* variable name not empty */
-        /* t.b.d.: Get from g_ctx */
+        char const * var_start = span->begin + 1 + prefix_len;
+        size_t const var_len = (size_t)( (span->end - 1) - var_start );
+
+        string var;
+        init( &var );
+        push_n( &var, var_start, var_len );
+
+        if ( strchr( first( &var ), '=' ) == NULL )
+        {
+            string * setting = get_setting( NULL, first( &var ) );
+
+            if ( setting != NULL )
+            {
+                val = first( setting );
+            }
+        }
+
+        SOLOG( TRACE, "Expanded {%s} -> '%s'", first( &var ), val ? val : "(null)" );
+        cleanup( &var );
     }
+
+    replace_span( input, span, val, val ? strlen( val ) : 0 );
 }
