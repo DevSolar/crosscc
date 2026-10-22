@@ -26,12 +26,14 @@ CFLAGS = -std=c11 -Weverything -g -I ./src \
          -Wno-unused-macros \
          -Wno-used-but-marked-unused
 
-MODULES = src/context \
+MODULES = src/config \
+          src/context \
           src/expand \
           src/options \
           src/utils
 
-TEST_MODULES = test/context_test \
+TEST_MODULES = test/config_test \
+               test/context_test \
                test/expand_test \
                test/options_test \
                test/utils_test

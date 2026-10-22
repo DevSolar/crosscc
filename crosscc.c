@@ -9,11 +9,13 @@
 
 #include "context.h"
 #include "options.h"
+#include "config.h"
 
 int main( int argc, char * argv[] )
 {
     solog_config.level = SOLOG_LVL_TRACE;
     ctx_init();
     parse_options( argc, argv );
+    load_cfg();
     ctx_cleanup();
 }

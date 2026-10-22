@@ -7,6 +7,9 @@
 /crosscc.d
 /crosscc.o
 /crosscc.o.json
+/src/config.d
+/src/config.o
+/src/config.json
 /src/context.d
 /src/context.o
 /src/context.json
@@ -25,6 +28,9 @@
 /test/crosscc_test.d
 /test/crosscc_test.o
 /test/crosscc_test.o.json
+/test/config_test.d
+/test/config_test.o
+/test/config_test.json
 /test/context_test.d
 /test/context_test.o
 /test/context_test.json
