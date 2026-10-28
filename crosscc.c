@@ -13,9 +13,41 @@
 
 int main( int argc, char * argv[] )
 {
-    solog_config.level = SOLOG_LVL_TRACE;
     ctx_init();
     parse_options( argc, argv );
-    load_cfg();
+
+    switch ( g_ctx.verbose )
+    {
+        case 0:
+            SOLOG( TRACE, "Setting ERR verbosity" );
+            solog_config.level = SOLOG_LVL_ERR;
+            break;
+        case 2:
+            SOLOG( TRACE, "Setting DEBUG verbosity" );
+            solog_config.level = SOLOG_LVL_DEBUG;
+            break;
+        case 99:
+            SOLOG( TRACE, "Setting TRACE verbosity" );
+            solog_config.level = SOLOG_LVL_TRACE;
+            break;
+        default:
+            SOLOG( TRACE, "Setting INFO verbosity" );
+            solog_config.level = SOLOG_LVL_INFO;
+            break;
+    }
+
+    if ( g_ctx.help )
+    {
+        help();
+    }
+    else if ( g_ctx.info )
+    {
+        list_targets();
+    }
+    else
+    {
+        load_cfg();
+    }
+
     ctx_cleanup();
 }
