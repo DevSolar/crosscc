@@ -65,7 +65,24 @@ static macro_type_t get_macro_type( strspan_t span )
 
 int expand( string * input, ... )
 {
-    strspan_t span = { NULL, first( input ) };
+    int rc;
+    va_list ap;
+    va_start( ap, input );
+    rc = vexpand( input, ap );
+    va_end( ap );
+    return rc;
+}
+
+int vexpand( string * input, va_list ap )
+{
+    strspan_t span;
+
+    if ( ! input || size( input ) == 0 || ! first( input ) )
+    {
+        return 0;
+    }
+
+    span = (strspan_t){ NULL, first( input ) };
 
     while ( *span.end != '\0' )
     {
@@ -95,10 +112,10 @@ int expand( string * input, ... )
                 break;
             case STR_ARGS:
             {
-                va_list ap;
-                va_start( ap, input );
-                expand_args( input, &span, ap );
-                va_end( ap );
+                va_list ap_copy;
+                va_copy( ap_copy, ap );
+                expand_args( input, &span, ap_copy );
+                va_end( ap_copy );
                 break;
             }
             case STR_LATEST:

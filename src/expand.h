@@ -4,7 +4,10 @@
 #include "support/cc_include.h"
 #include "utils.h"
 
+#include <stdarg.h>
+
 int expand( string * input, ... );
+int vexpand( string * input, va_list ap );
 
 /* Expands the {LATEST} macro within span by searching for matching files or
  * directories on disk that fit `prefix + {version_number} + suffix`, where
