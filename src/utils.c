@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include "context.h"
+#include "expand.h"
 #include "support/solog.h"
 
 #include <sys/stat.h>
@@ -8,6 +9,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -656,6 +658,24 @@ string * get_setting( char const * section, char const * key )
 
         value = get( &g_ctx.settings, first( &full_key ) );
         cleanup( &full_key );
+    }
+
+    return value;
+}
+
+string get_setting_expanded( char const * section, char const * key, ... )
+{
+    string * val_ref;
+    string value;
+    init( &value );
+
+    if ( ( val_ref = get_setting( section, key ) ) )
+    {
+        va_list ap;
+        push_fmt( &value, first( val_ref ) );
+        va_start( ap, key );
+        vexpand( &value, ap );
+        va_end( ap );
     }
 
     return value;
