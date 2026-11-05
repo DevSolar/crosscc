@@ -848,10 +848,11 @@ void greatest_test_post(int res) {                                      \
 static void report_suite(void) {                                        \
     if (greatest_info.suite.tests_run > 0) {                            \
         GREATEST_FPRINTF(GREATEST_STDOUT,                               \
-            "\n%u test%s - %u passed, %u failed, %u skipped",           \
+            "\n%u test%s - %u passed, %s%u failed\033[39m, %u skipped", \
             greatest_info.suite.tests_run,                              \
             greatest_info.suite.tests_run == 1 ? "" : "s",              \
             greatest_info.suite.passed,                                 \
+            greatest_info.suite.failed ? "\033[31m" : "\033[32m",       \
             greatest_info.suite.failed,                                 \
             greatest_info.suite.skipped);                               \
         GREATEST_CLOCK_DIFF(greatest_info.suite.pre_suite,              \
@@ -885,7 +886,7 @@ static int greatest_suite_pre(const char *suite_name) {                 \
     }                                                                   \
     p->count_run++;                                                     \
     update_counts_and_reset_suite();                                    \
-    GREATEST_FPRINTF(GREATEST_STDOUT, "\n* Suite %s:\n", suite_name);   \
+    GREATEST_FPRINTF(GREATEST_STDOUT, "----------------------------------------------------------------------\n* Suite %s:\n", suite_name);   \
     GREATEST_SET_TIME(greatest_info.suite.pre_suite);                   \
     return 1;                                                           \
 }                                                                       \
@@ -1159,7 +1160,7 @@ void GREATEST_PRINT_REPORT(void) {                                      \
         update_counts_and_reset_suite();                                \
         GREATEST_SET_TIME(greatest_info.end);                           \
         GREATEST_FPRINTF(GREATEST_STDOUT,                               \
-            "\nTotal: %u test%s",                                       \
+            "----------------------------------------------------------------------\nTotal: %u test%s",                                       \
             greatest_info.tests_run,                                    \
             greatest_info.tests_run == 1 ? "" : "s");                   \
         GREATEST_CLOCK_DIFF(greatest_info.begin,                        \
@@ -1168,8 +1169,9 @@ void GREATEST_PRINT_REPORT(void) {                                      \
             greatest_info.assertions,                                   \
             greatest_info.assertions == 1 ? "" : "s");                  \
         GREATEST_FPRINTF(GREATEST_STDOUT,                               \
-            "Pass: %u, fail: %u, skip: %u.\n",                          \
+            "Pass: %u, %sfail: %u,\033[39m skip: %u.\n",                \
             greatest_info.passed,                                       \
+            greatest_info.failed ? "\033[31m" : "\033[32m",             \
             greatest_info.failed, greatest_info.skipped);               \
     }                                                                   \
 }                                                                       \
