@@ -42,11 +42,13 @@ int main( int argc, char * argv[] )
     }
     else if ( g_ctx.info )
     {
+        load_ini();
         list_targets();
     }
     else
     {
-        load_cfg();
+        load_ini();
+        load_target_ini();
     }
 
     ctx_cleanup();
