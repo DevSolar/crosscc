@@ -24,6 +24,7 @@ void ctx_init( void )
 #undef INIT_bool
 #undef INIT_string
 
+    init( &g_ctx.command );
     init( &g_ctx.passthrough );
     init( &g_ctx.settings );
 
@@ -49,6 +50,7 @@ void ctx_cleanup( void )
 #undef CLEANUP_bool
 #undef CLEANUP_string
 
+    cleanup( &g_ctx.command );
     cleanup( &g_ctx.passthrough );
     cleanup( &g_ctx.settings );
 }
@@ -70,6 +72,8 @@ void dump( void )
 #undef FMT_long
 #undef FMT_bool
 #undef FMT_string
+
+    SOLOG( DEBUG, "ctx.command = '%s'", first( &g_ctx.command ) );
 }
 
 void help( void )

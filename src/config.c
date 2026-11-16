@@ -324,8 +324,8 @@ void load_target_ini( void )
 /* List all targets for which .ini files are available */
 static bool list_targets_cb( string * dir, void * udata )
 {
+    map( string, string ) * targets = (map( string, string ) *)udata;
     DIR * d = opendir( first( dir ) );
-    (void)udata;
 
     if ( d )
     {
@@ -336,6 +336,7 @@ static bool list_targets_cb( string * dir, void * udata )
         while ( ( ent = readdir( d ) ) != NULL )
         {
             size_t nlen = strlen( ent->d_name );
+
             if ( nlen > 4 && strcmp( ent->d_name + nlen - 4, ".ini" ) == 0 )
             {
                 clear( &path );
@@ -354,7 +355,25 @@ static bool list_targets_cb( string * dir, void * udata )
 
                 if ( file_readable( first( &path ) ) )
                 {
-                    printf( "%.*s\n", (int)( nlen - 4 ), ent->d_name );
+                    string target;
+                    init( &target );
+                    push_n( &target, ent->d_name, nlen - 4 );
+
+                    if ( get( targets, first( &target ) ) == NULL )
+                    {
+                        string val;
+                        init_clone( &val, &path );
+
+                        if ( insert( targets, target, val ) == NULL )
+                        {
+                            cleanup( &target );
+                            cleanup( &val );
+                        }
+                    }
+                    else
+                    {
+                        cleanup( &target );
+                    }
                 }
             }
         }
@@ -367,7 +386,26 @@ static bool list_targets_cb( string * dir, void * udata )
 
 void list_targets( void )
 {
+    map( string, string ) targets;
     string inifiles = get_setting_expanded( "settings", "inifiles" );
-    foreach( first( &inifiles ), ";", list_targets_cb, NULL );
+
+    init( &targets );
+    foreach( first( &inifiles ), ";", list_targets_cb, &targets );
+    erase( &targets, "crosscc" );
+    erase( &targets, "config" );
+
+    for_each( &targets, target, path )
+    {
+        if ( g_ctx.verbose > 0 )
+        {
+            printf( "%s (%s)\n", first( target ), first( path ) );
+        }
+        else
+        {
+            printf( "%s\n", first( target ) );
+        }
+    }
+
+    cleanup( &targets );
     cleanup( &inifiles );
 }

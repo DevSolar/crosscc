@@ -257,7 +257,10 @@ TEST test_list_targets( void )
     char const * dir1 = "test_list1_tmp";
     char const * dir2 = "test_list2_tmp";
     char const * t1 = "test_list1_tmp/alpha.ini";
+    char const * t1_dup = "test_list2_tmp/alpha.ini";
     char const * t2 = "test_list2_tmp/beta.ini";
+    char const * cfg_ini = "test_list1_tmp/config.ini";
+    char const * crosscc_ini = "test_list2_tmp/crosscc.ini";
     char const * dot_ini = "test_list1_tmp/.ini";
     char const * non_ini = "test_list1_tmp/readme.txt";
     char const * sub_dir = "test_list1_tmp/subdir.ini";
@@ -267,12 +270,16 @@ TEST test_list_targets( void )
     FILE * cap_fh;
     char buf[ 256 ];
     size_t nread;
+    char * alpha_pos;
 
     mkdir( dir1, 0700 );
     mkdir( dir2, 0700 );
     mkdir( sub_dir, 0700 );
     write_text_file( t1, "[settings]\nname = alpha\n" );
+    write_text_file( t1_dup, "[settings]\nname = alpha\n" );
     write_text_file( t2, "[settings]\nname = beta\n" );
+    write_text_file( cfg_ini, "[settings]\n" );
+    write_text_file( crosscc_ini, "[settings]\n" );
     write_text_file( dot_ini, "[settings]\n" );
     write_text_file( non_ini, "ignore me\n" );
 
@@ -304,16 +311,49 @@ TEST test_list_targets( void )
     buf[ nread ] = '\0';
     fclose( cap_fh );
 
-    ASSERT( strstr( buf, "alpha\n" ) != NULL );
+    alpha_pos = strstr( buf, "alpha\n" );
+    ASSERT( alpha_pos != NULL );
+    ASSERT( strstr( alpha_pos + 1, "alpha\n" ) == NULL );
     ASSERT( strstr( buf, "beta\n" ) != NULL );
+    ASSERT( strstr( buf, "config" ) == NULL );
+    ASSERT( strstr( buf, "crosscc" ) == NULL );
     ASSERT( strstr( buf, "subdir" ) == NULL );
     ASSERT( strstr( buf, "readme" ) == NULL );
+
+    /* Verbose mode: includes resolved path to first matching .ini file */
+    g_ctx.verbose = 1;
+    fflush( stdout );
+    saved_stdout = dup( STDOUT_FILENO );
+    ASSERT( saved_stdout >= 0 );
+    cap_fh = fopen( out_file, "w" );
+    ASSERT( cap_fh != NULL );
+    dup2( fileno( cap_fh ), STDOUT_FILENO );
+    fclose( cap_fh );
+
+    list_targets();
+
+    fflush( stdout );
+    dup2( saved_stdout, STDOUT_FILENO );
+    close( saved_stdout );
+
+    cap_fh = fopen( out_file, "r" );
+    ASSERT( cap_fh != NULL );
+    nread = fread( buf, 1, sizeof( buf ) - 1, cap_fh );
+    buf[ nread ] = '\0';
+    fclose( cap_fh );
+
+    ASSERT( strstr( buf, "alpha (test_list1_tmp/alpha.ini)\n" ) != NULL );
+    ASSERT( strstr( buf, "test_list2_tmp/alpha.ini" ) == NULL );
+    ASSERT( strstr( buf, "beta (test_list2_tmp/beta.ini)\n" ) != NULL );
 
     ctx_cleanup();
 
     remove( out_file );
     remove( t1 );
+    remove( t1_dup );
     remove( t2 );
+    remove( cfg_ini );
+    remove( crosscc_ini );
     remove( dot_ini );
     remove( non_ini );
     rmdir( sub_dir );

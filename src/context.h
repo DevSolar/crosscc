@@ -29,6 +29,7 @@ typedef struct
 #define X( name, initial, type, desc ) type name;
     OPTIONS( X )
 #undef X
+    string command;
     vec( string ) passthrough;
     map( string, string ) settings;
 } context_t;

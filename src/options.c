@@ -6,12 +6,47 @@
 #include "support/solog.h"
 
 #include <ctype.h>
+#include <string.h>
 
 static void parse_bool( bool * dest, strspan_t span );
 static void parse_long( long * dest, strspan_t span );
 static void parse_string( string * dest, strspan_t span );
 
 static bool parse_option( string * option, void * unused );
+
+static string exe_name( char const * path )
+{
+    string name;
+
+    init( &name );
+
+    if ( path && *path )
+    {
+        strspan_t span;
+        char const * sep;
+        char const * base;
+        size_t len;
+
+        span.begin = path;
+        span.end = path + strlen( path );
+        sep = strrpbrk( &span, "/\\" );
+        base = sep ? sep + 1 : path;
+
+        if ( *base )
+        {
+            push_fmt( &name, base );
+            len = size( &name );
+
+            /* strip ".exe" case-insensitively (Windows) */
+            if ( len > 4 && stricmp( first( &name ) + len - 4, ".exe" ) == 0 )
+            {
+                erase_n( &name, len - 4, 4 );
+            }
+        }
+    }
+
+    return name;
+}
 
 void parse_options( int argc, char * argv[] )
 {
@@ -21,6 +56,13 @@ void parse_options( int argc, char * argv[] )
      * need to roll our own.
      */
     int i;
+
+    if ( argc >= 1 && argv != NULL )
+    {
+        cleanup( &g_ctx.command );
+        g_ctx.command = exe_name( argv[0] );
+        SOLOG( TRACE, "Command was '%s'", first( &g_ctx.command ) );
+    }
 
     if ( argc <= 1 || argv == NULL )
     {
