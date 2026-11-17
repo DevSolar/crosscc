@@ -351,18 +351,35 @@ int get_line( FILE * fh, string * line, int * lineno )
 
         if ( p != NULL )
         {
+            size_t len = strlen( buf );
+            bool eol = ( len > 0 ) && ( buf[ len - 1 ] == '\n' );
+
+            if ( eol )
+            {
+                buf[ --len ] = '\0';
+            }
+
             if ( continued )
             {
-                SOLOG( TRACE, "Read continued line, adding a space where the \"\\\\n\" was" );
-                continued = false;
-                push_fmt( line, " ", ltrim( buf ) );
+                char const * trimmed = ltrim( buf );
+
+                if ( *trimmed )
+                {
+                    SOLOG( TRACE, "Read continued line, adding a space where the \"\\\\n\" was" );
+                    continued = false;
+                    push_fmt( line, " ", trimmed );
+                }
+                else if ( eol )
+                {
+                    continued = false;
+                }
             }
-            else
+            else if ( len > 0 )
             {
                 push_fmt( line, buf );
             }
 
-            if ( *last( line ) != '\n' )
+            if ( ! eol )
             {
                 SOLOG( TRACE, "Read long line, continue" );
                 continue;
