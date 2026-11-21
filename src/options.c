@@ -14,7 +14,7 @@ static void parse_string( string * dest, strspan_t span );
 
 static bool parse_option( string * option, void * unused );
 
-static string exe_name( char const * path )
+static string exe_basename( char const * path )
 {
     string name;
 
@@ -60,8 +60,25 @@ void parse_options( int argc, char * argv[] )
     if ( argc >= 1 && argv != NULL )
     {
         cleanup( &g_ctx.command );
-        g_ctx.command = exe_name( argv[0] );
+        g_ctx.command = exe_basename( argv[0] );
         SOLOG( TRACE, "Command was '%s'", first( &g_ctx.command ) );
+
+        if ( size( &g_ctx.command ) > 0 )
+        {
+            strspan_t span = { first( &g_ctx.command ), end( &g_ctx.command ) };
+            char * hyphen = strrpbrk( &span, "-" );
+
+            if ( hyphen != NULL )
+            {
+                strspan_t target = { span.begin, hyphen };
+                parse_string( &g_ctx.target, target );
+                span.begin = hyphen + 1;
+                SOLOG( TRACE, "Implicit target: '%s'", first( &g_ctx.target ) );
+            }
+
+            parse_string( &g_ctx.mode, span );
+            SOLOG( TRACE, "Implicit mode: '%s'", first( &g_ctx.mode ) );
+        }
     }
 
     if ( argc <= 1 || argv == NULL )
