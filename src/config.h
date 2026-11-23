@@ -2,6 +2,7 @@
 #define CROSSCC_SRC_CONFIG_H
 
 void load_ini( void );
+void resolve_mode( void );
 void load_target_ini( void );
 void list_targets( void );
 

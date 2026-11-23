@@ -48,6 +48,7 @@ int main( int argc, char * argv[] )
     else
     {
         load_ini();
+        resolve_mode();
         load_target_ini();
     }
 

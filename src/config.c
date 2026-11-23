@@ -259,6 +259,29 @@ void load_ini( void )
     cleanup( &ini_file );
 }
 
+void resolve_mode( void )
+{
+    string * mapped;
+
+    if ( size( &g_ctx.mode ) == 0 )
+    {
+        SOLOG( ERR, "No mode specified." );
+        exit( EXIT_FAILURE );
+    }
+
+    mapped = get_setting( "modes", first( &g_ctx.mode ) );
+
+    if ( mapped == NULL || size( mapped ) == 0 )
+    {
+        SOLOG( ERR, "Invalid mode '%s'.", first( &g_ctx.mode ) );
+        exit( EXIT_FAILURE );
+    }
+
+    clear( &g_ctx.mode );
+    push_fmt( &g_ctx.mode, *mapped );
+    SOLOG( TRACE, "Mapped mode to '%s'", first( &g_ctx.mode ) );
+}
+
 /* Parse target .ini file */
 static bool load_target_ini_cb( string * dir, void * udata )
 {

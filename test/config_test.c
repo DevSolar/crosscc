@@ -5,6 +5,7 @@
 #include "utils.h"
 
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <stdio.h>
@@ -363,6 +364,62 @@ TEST test_list_targets( void )
     PASS();
 }
 
+static int run_resolve_mode_expect_exit( char const * mode )
+{
+    pid_t pid = fork();
+
+    if ( pid == 0 )
+    {
+        ctx_init();
+        push_fmt( &g_ctx.config, "ini/config.ini" );
+        load_ini();
+
+        if ( mode )
+        {
+            push_fmt( &g_ctx.mode, mode );
+        }
+
+        resolve_mode();
+        ctx_cleanup();
+        _exit( 0 );
+    }
+
+    if ( pid > 0 )
+    {
+        int status = 0;
+
+        if ( waitpid( pid, &status, 0 ) == pid && WIFEXITED( status ) )
+        {
+            return WEXITSTATUS( status );
+        }
+    }
+
+    return -1;
+}
+
+TEST test_resolve_mode( void )
+{
+    ctx_init();
+    push_fmt( &g_ctx.config, "ini/config.ini" );
+    load_ini();
+
+    push_fmt( &g_ctx.mode, "cc" );
+    resolve_mode();
+    ASSERT_STR_EQ( "compiler-c", first( &g_ctx.mode ) );
+
+    clear( &g_ctx.mode );
+    push_fmt( &g_ctx.mode, "ld" );
+    resolve_mode();
+    ASSERT_STR_EQ( "linker", first( &g_ctx.mode ) );
+
+    ctx_cleanup();
+
+    ASSERT_EQ( EXIT_FAILURE, run_resolve_mode_expect_exit( "bogus" ) );
+    ASSERT_EQ( EXIT_FAILURE, run_resolve_mode_expect_exit( NULL ) );
+
+    PASS();
+}
+
 SUITE( config_suite )
 {
     RUN_TEST( test_load_repo_ini_and_target );
@@ -370,4 +427,5 @@ SUITE( config_suite )
     RUN_TEST( test_load_ini_precedence );
     RUN_TEST( test_load_target_ini_search_paths );
     RUN_TEST( test_list_targets );
+    RUN_TEST( test_resolve_mode );
 }
