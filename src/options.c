@@ -183,6 +183,22 @@ static void parse_long( long * dest, strspan_t span )
 
 static void parse_string( string * dest, strspan_t span )
 {
+    if ( ( dest == &g_ctx.target || dest == &g_ctx.mode ) && size( dest ) > 0 )
+    {
+        char const * name = ( dest == &g_ctx.target ) ? "target" : "mode";
+        size_t len = (size_t)( span.end - span.begin );
+
+        if ( size( dest ) == len && strncmp( first( dest ), span.begin, len ) == 0 )
+        {
+            SOLOG( WARN, "Option '%s' already set to '%s'", name, first( dest ) );
+            return;
+        }
+
+        SOLOG( ERR, "Option '%s' already set to '%s', cannot change to '%.*s'",
+               name, first( dest ), (int)len, span.begin );
+        exit( EXIT_FAILURE );
+    }
+
     clear( dest );
     push_n( dest, span.begin, (size_t)( span.end - span.begin ) );
 }
