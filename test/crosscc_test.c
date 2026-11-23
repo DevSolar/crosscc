@@ -10,6 +10,7 @@ SUITE_EXTERN( context_suite );
 SUITE_EXTERN( options_suite );
 SUITE_EXTERN( expand_suite );
 SUITE_EXTERN( config_suite );
+SUITE_EXTERN( sysroot_suite );
 
 GREATEST_MAIN_DEFS();
 
@@ -22,5 +23,6 @@ int main( int argc, char * argv[] )
     RUN_SUITE( options_suite );
     RUN_SUITE( expand_suite );
     RUN_SUITE( config_suite );
+    RUN_SUITE( sysroot_suite );
     GREATEST_MAIN_END();
 }

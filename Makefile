@@ -30,16 +30,19 @@ MODULES = src/config \
           src/context \
           src/expand \
           src/options \
+          src/sysroot \
           src/utils
 
 TEST_MODULES = test/config_test \
                test/context_test \
                test/expand_test \
                test/options_test \
+               test/sysroot_test \
                test/utils_test
 
 SUPPORT_FILES = src/support/cc.h \
                 src/support/greatest.h \
+                src/support/mkdir_p.h \
                 src/support/lonesha256.h \
                 src/support/solog.h
 
@@ -114,10 +117,15 @@ src/support/greatest.h:
 	echo "GET   $(@F)"
 	curl -sSL "https://raw.githubusercontent.com/silentbicycle/greatest/refs/tags/v1.5.0/$(@F)" -o $@
 
+# Mkdir_p v1.0
+src/support/mkdir_p.h:
+	echo "GET   $(@F)"
+	curl -sSL "https://raw.githubusercontent.com/DevSolar/mkdir_p/refs/tags/v1.0/$(@F)" -o $@
+
 # LoneSHA256
 src/support/lonesha256.h:
 	echo "GET   $(@F)"
-curl -sSL "https://raw.githubusercontent.com/DevSolar/lonesha256/refs/tags/latest/$(@F)" -o $@
+	curl -sSL "https://raw.githubusercontent.com/DevSolar/lonesha256/refs/tags/latest/$(@F)" -o $@
 
 # SoLog v10
 src/support/solog.h:

@@ -10,6 +10,7 @@
 #include "context.h"
 #include "options.h"
 #include "config.h"
+#include "sysroot.h"
 
 int main( int argc, char * argv[] )
 {
@@ -50,6 +51,7 @@ int main( int argc, char * argv[] )
         load_ini();
         resolve_mode();
         load_target_ini();
+        provision_sysroot();
     }
 
     ctx_cleanup();

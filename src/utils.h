@@ -54,6 +54,7 @@ int get_line( FILE * fh, string * line, int * lineno );
 
 /* splits a delimiter-separated list, and invokes a callback function
  * for each element. If the callback returns false, the loop terminates.
+ * Returns the number of tokens processed.
  */
 int foreach( char const * list, char const * delims, bool (*callback)( string *, void * ), void * userdata );
 

@@ -19,6 +19,9 @@
 /src/options.d
 /src/options.o
 /src/options.json
+/src/sysroot.d
+/src/sysroot.o
+/src/sysroot.json
 /src/utils.d
 /src/utils.o
 /src/utils.json
@@ -40,6 +43,9 @@
 /test/options_test.d
 /test/options_test.o
 /test/options_test.json
+/test/sysroot_test.d
+/test/sysroot_test.o
+/test/sysroot_test.json
 /test/utils_test.d
 /test/utils_test.o
 /test/utils_test.json
