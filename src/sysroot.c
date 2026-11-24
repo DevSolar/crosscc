@@ -1,10 +1,14 @@
 #include "sysroot.h"
 
+#include "context.h"
 #include "utils.h"
 
 #define LONESHA256_STATIC
 #define LONESHA256_STDIO
 #include "support/lonesha256.h"
+#define MKDIR_P_STATIC
+#define MKDIR_P_IMPLEMENTATION
+#include "support/mkdir_p.h"
 #include "support/solog.h"
 
 bool sysroot_exists( void )
@@ -200,6 +204,8 @@ void provision_sysroot( void )
 {
     sysroot_archive_t archive;
     string checksum_expected;
+    string base;
+    string dir;
     bool checksum_ok;
 
     if ( sysroot_exists() )
@@ -232,12 +238,75 @@ void provision_sysroot( void )
         exit( EXIT_FAILURE );
     }
 
+    base = get_setting_expanded( "sysroot", "base" );
+    dir = get_setting_expanded( "sysroot", "dir" );
+
+    if ( size( &base ) == 0 && size( &dir ) > 0 )
+    {
+        push_fmt( &base, first( &dir ) );
+    }
+    else if ( size( &dir ) == 0 && size( &base ) > 0 )
+    {
+        push_fmt( &dir, first( &base ) );
+    }
+
+    if ( size( &base ) == 0 )
+    {
+        SOLOG( ERR, "Neither sysroot.base nor sysroot.dir is configured" );
+        cleanup( &base );
+        cleanup( &dir );
+        sysroot_archive_cleanup( &archive );
+        exit( EXIT_FAILURE );
+    }
+
+    {
+        size_t base_len = size( &base );
+
+        while ( base_len > 1 && ( first( &base )[base_len - 1] == '/' || first( &base )[base_len - 1] == '\\' ) )
+        {
+            --base_len;
+        }
+
+        if ( size( &dir ) < base_len ||
+             strncmp( first( &dir ), first( &base ), base_len ) != 0 ||
+             ( size( &dir ) > base_len && first( &dir )[base_len] != '/' && first( &dir )[base_len] != '\\' ) )
+        {
+            SOLOG( WARN, "sysroot.dir ('%s') is not under sysroot.base ('%s')", first( &dir ), first( &base ) );
+        }
+    }
+
+    if ( g_ctx.dryrun )
+    {
+        if ( ! dir_readable( first( &base ) ) )
+        {
+            SOLOG( INFO, "[dryrun] mkdir -p '%s'", first( &base ) );
+        }
+    }
+    else if ( mkdir_p( first( &base ), 0755 ) != 0 )
+    {
+        SOLOG( ERR, "Failed to create sysroot.base directory '%s'", first( &base ) );
+        cleanup( &base );
+        cleanup( &dir );
+        sysroot_archive_cleanup( &archive );
+        exit( EXIT_FAILURE );
+    }
+
     /*
-     * 6. Ensure `sysroot.base` exists, expand `sysroot.unpack` with `{ARG:1}` = archive path,
+     * 6. Expand `sysroot.unpack` with `{ARG:1}` = archive path,
      *    and execute (or log if `g_ctx.dryrun`); `exit( EXIT_FAILURE )` on failure.
      * 7. If `sysroot.setup` is non-empty, expand and execute (or log if `g_ctx.dryrun`);
      *    `exit( EXIT_FAILURE )` on failure.
-     * 8. Clean up all temporary strings.
      */
+    if ( ! g_ctx.dryrun && ! sysroot_exists() )
+    {
+        SOLOG( ERR, "Sysroot directory '%s' does not exist after provisioning", first( &dir ) );
+        cleanup( &base );
+        cleanup( &dir );
+        sysroot_archive_cleanup( &archive );
+        exit( EXIT_FAILURE );
+    }
+
+    cleanup( &base );
+    cleanup( &dir );
     sysroot_archive_cleanup( &archive );
 }

@@ -120,7 +120,7 @@ src/support/greatest.h:
 # Mkdir_p v1.0
 src/support/mkdir_p.h:
 	echo "GET   $(@F)"
-	curl -sSL "https://raw.githubusercontent.com/DevSolar/mkdir_p/refs/tags/v1.0/$(@F)" -o $@
+	curl -sSL "https://raw.githubusercontent.com/DevSolar/mkdir_p/refs/tags/v1.1/$(@F)" -o $@
 
 # LoneSHA256
 src/support/lonesha256.h:

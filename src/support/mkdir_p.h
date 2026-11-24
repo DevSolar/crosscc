@@ -52,7 +52,7 @@
 #define MKDIR_P_H
 
 #define MKDIR_P_VERSION_MAJOR 1
-#define MKDIR_P_VERSION_MINOR 0
+#define MKDIR_P_VERSION_MINOR 1
 
 #ifdef __cplusplus
 extern "C" {
@@ -128,6 +128,8 @@ static int mkdir_p__is_dir( char const * path )
 /* Create a single directory; an already existing directory is success. */
 static int mkdir_p__make_one( char const * path, unsigned int mode )
 {
+    (void)mode;
+
     if ( MKDIR_P__MKDIR( path, mode ) == 0 )
     {
         return 0;
