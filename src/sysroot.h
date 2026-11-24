@@ -16,8 +16,8 @@ typedef struct
     string path;
 } sysroot_archive_t;
 
-/* Resolves the archive path for sysroot.url within the configured
- * settings.cache search path.
+/* Resolves the archive path for sysroot.url (or sysroot.local, if set)
+ * within the configured settings.cache search path.
  * If an existing readable archive is found, returns it in .path with
  * an empty .basename. Otherwise returns the first cache directory in
  * .path and the archive filename in .basename.

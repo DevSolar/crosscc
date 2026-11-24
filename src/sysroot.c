@@ -57,22 +57,47 @@ static bool sysroot_cache_file_cb( string * dir, void * udata )
 sysroot_archive_t sysroot_cache_file( void )
 {
     string url = get_setting_expanded( "sysroot", "url" );
-    strspan_t url_span = { first( &url ), end( &url ) };
+    string local = get_setting_expanded( "sysroot", "local" );
     string cache_dirs = get_setting_expanded( "settings", "cache" );
-    char const * sep = strrpbrk( &url_span, "/\\" );
-    char const * basename = sep ? sep + 1 : first( &url );
     sysroot_archive_t archive;
 
     init( &archive.basename );
     init( &archive.path );
 
-    if ( basename && *basename )
+    if ( size( &local ) > 0 )
     {
-        push_fmt( &archive.basename, basename );
+        strspan_t local_span = { first( &local ), end( &local ) };
+
+        if ( strrpbrk( &local_span, "/\\" ) != NULL )
+        {
+            SOLOG( ERR, "sysroot.local must not contain path separators: '%s'", first( &local ) );
+            cleanup( &url );
+            cleanup( &local );
+            cleanup( &cache_dirs );
+            exit( EXIT_FAILURE );
+        }
+
+        push_fmt( &archive.basename, first( &local ) );
+    }
+    else
+    {
+        strspan_t url_span = { first( &url ), end( &url ) };
+        char const * sep = strrpbrk( &url_span, "/\\" );
+        char const * basename = sep ? sep + 1 : first( &url );
+
+        if ( basename && *basename )
+        {
+            push_fmt( &archive.basename, basename );
+        }
+    }
+
+    if ( size( &archive.basename ) > 0 )
+    {
         foreach( first( &cache_dirs ), ";", sysroot_cache_file_cb, &archive );
     }
 
     cleanup( &url );
+    cleanup( &local );
     cleanup( &cache_dirs );
     return archive;
 }
