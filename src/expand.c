@@ -73,63 +73,105 @@ int expand( string * input, ... )
     return rc;
 }
 
+#define MAX_EXPAND_PASSES 32
+
 int vexpand( string * input, va_list ap )
 {
     strspan_t span;
+    bool resolve_latest = false;
+    int passes = 0;
 
     if ( ! input || size( input ) == 0 || ! first( input ) )
     {
         return 0;
     }
 
-    span = (strspan_t){ NULL, first( input ) };
-
-    while ( *span.end != '\0' )
+    for (;;)
     {
-        macro_type_t macro_type = STR_NO_MACRO;
+        int replacements = 0;
+        bool saw_latest = false;
 
-        switch ( *span.end )
+        if ( ++passes > MAX_EXPAND_PASSES )
         {
-            case '{':
-                span.begin = span.end;
-                break;
-            case '}':
-                if ( span.begin != NULL )
-                {
-                    macro_type = get_macro_type( span );
-                }
-                break;
-            default:
-                break;
+            SOLOG( ERR, "Macro expansion exceeded %d passes (possible cyclic reference in '%s')", MAX_EXPAND_PASSES, first( input ) );
+            return -1;
         }
 
-        ++span.end;
+        span = (strspan_t){ NULL, first( input ) };
 
-        switch ( macro_type )
+        while ( *span.end != '\0' )
         {
-            case STR_ENV:
-                expand_env( input, &span );
-                break;
-            case STR_ARGS:
+            macro_type_t macro_type = STR_NO_MACRO;
+
+            switch ( *span.end )
             {
-                va_list ap_copy;
-                va_copy( ap_copy, ap );
-                expand_args( input, &span, ap_copy );
-                va_end( ap_copy );
+                case '{':
+                    span.begin = span.end;
+                    break;
+                case '}':
+                    if ( span.begin != NULL )
+                    {
+                        macro_type = get_macro_type( span );
+                    }
+                    break;
+                default:
+                    break;
+            }
+
+            ++span.end;
+
+            switch ( macro_type )
+            {
+                case STR_ENV:
+                    expand_env( input, &span );
+                    ++replacements;
+                    break;
+                case STR_ARGS:
+                {
+                    va_list ap_copy;
+                    va_copy( ap_copy, ap );
+                    expand_args( input, &span, ap_copy );
+                    va_end( ap_copy );
+                    ++replacements;
+                    break;
+                }
+                case STR_LATEST:
+                    if ( resolve_latest )
+                    {
+                        expand_latest( input, &span );
+                    }
+                    else
+                    {
+                        saw_latest = true;
+                        span.begin = NULL;
+                    }
+                    break;
+                case STR_DEFAULT:
+                    expand_default( input, &span );
+                    ++replacements;
+                    break;
+                case STR_NO_MACRO:
+                    break;
+                default:
+                    SOLOG( ERR, "Internal error: Unimplemented macro type." );
+                    span.begin = NULL;
+                    break;
+            }
+        }
+
+        if ( resolve_latest )
+        {
+            break;
+        }
+
+        if ( replacements == 0 )
+        {
+            if ( ! saw_latest )
+            {
                 break;
             }
-            case STR_LATEST:
-                expand_latest( input, &span );
-                break;
-            case STR_DEFAULT:
-                expand_default( input, &span );
-                break;
-            case STR_NO_MACRO:
-                break;
-            default:
-                SOLOG( ERR, "Internal error: Unimplemented macro type." );
-                /* TODO */
-                break;
+
+            resolve_latest = true;
         }
     }
 

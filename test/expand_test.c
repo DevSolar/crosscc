@@ -3,6 +3,10 @@
 #include "expand.h"
 #include "utils.h"
 
+#include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 /* --------------------------------------------------------------------------
  * Mocking & Isolation Strategy:
  * For tests that verify filesystem interaction with expand_latest():
@@ -204,6 +208,83 @@ TEST test_expand_integration_default( void )
     PASS();
 }
 
+static void insert_setting( char const * key_str, char const * val_str )
+{
+    string k, v;
+    init( &k );
+    init( &v );
+    push_fmt( &k, key_str );
+    push_fmt( &v, val_str );
+    insert( &g_ctx.settings, k, v );
+}
+
+TEST test_expand_recursive_and_cyclic( void )
+{
+    string input;
+
+    ctx_init();
+    insert_setting( "sysroot.base", "/opt/{sysroot.arch}" );
+    insert_setting( "sysroot.arch", "{ARGS:1}" );
+    insert_setting( "sysroot.dir", "{sysroot.base}/sub" );
+
+    init( &input );
+    push_fmt( &input, "{sysroot.dir}/bin" );
+    ASSERT_EQ( 0, expand( &input, "aarch64" ) );
+    ASSERT_STR_EQ( "/opt/aarch64/sub/bin", first( &input ) );
+
+    /* Cyclic macro reference must terminate cleanly with -1 */
+    insert_setting( "cycle.a", "{cycle.b}" );
+    insert_setting( "cycle.b", "{cycle.a}" );
+    clear( &input );
+    push_fmt( &input, "{cycle.a}" );
+    ASSERT_EQ( -1, expand( &input ) );
+
+    cleanup( &input );
+    ctx_cleanup();
+    PASS();
+}
+
+TEST test_expand_deferred_latest( void )
+{
+    char const * base_dir = "test_expand_deferred_tmp";
+    char const * v1_dir = "test_expand_deferred_tmp/tool-1.2";
+    char const * v2_dir = "test_expand_deferred_tmp/tool-1.10";
+    char const * v1_sub = "test_expand_deferred_tmp/tool-1.2/bin";
+    char const * v2_sub = "test_expand_deferred_tmp/tool-1.10/bin";
+    string input;
+
+    rmdir( v1_sub );
+    rmdir( v2_sub );
+    rmdir( v1_dir );
+    rmdir( v2_dir );
+    rmdir( base_dir );
+
+    ASSERT_EQ( 0, mkdir( base_dir, 0755 ) );
+    ASSERT_EQ( 0, mkdir( v1_dir, 0755 ) );
+    ASSERT_EQ( 0, mkdir( v2_dir, 0755 ) );
+    ASSERT_EQ( 0, mkdir( v1_sub, 0755 ) );
+    ASSERT_EQ( 0, mkdir( v2_sub, 0755 ) );
+
+    ctx_init();
+    insert_setting( "test.root", base_dir );
+    insert_setting( "test.sub", "bin" );
+
+    init( &input );
+    push_fmt( &input, "{test.root}/tool-{LATEST}/{test.sub}" );
+    ASSERT_EQ( 0, expand( &input ) );
+    ASSERT_STR_EQ( "test_expand_deferred_tmp/tool-1.10/bin", first( &input ) );
+
+    cleanup( &input );
+    ctx_cleanup();
+
+    rmdir( v1_sub );
+    rmdir( v2_sub );
+    rmdir( v1_dir );
+    rmdir( v2_dir );
+    rmdir( base_dir );
+    PASS();
+}
+
 SUITE( expand_suite )
 {
     RUN_TEST( test_expand_latest_null_and_invalid_span );
@@ -217,4 +298,6 @@ SUITE( expand_suite )
     RUN_TEST( test_expand_default_setting_found );
     RUN_TEST( test_expand_default_setting_not_found );
     RUN_TEST( test_expand_integration_default );
+    RUN_TEST( test_expand_recursive_and_cyclic );
+    RUN_TEST( test_expand_deferred_latest );
 }
