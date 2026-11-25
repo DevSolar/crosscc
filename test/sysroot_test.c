@@ -277,6 +277,7 @@ TEST test_provision_sysroot_dryrun( void )
     ASSERT_EQ( 3, fwrite( "abc", 1, 3, fh ) );
     fclose( fh );
 
+    /* Dry run with cached archive */
     ctx_init();
     g_ctx.dryrun = true;
     set_setting( "settings.cache", cache_dir );
@@ -284,17 +285,84 @@ TEST test_provision_sysroot_dryrun( void )
     set_setting( "sysroot.checksum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" );
     set_setting( "sysroot.base", base_dir );
     set_setting( "sysroot.dir", "{sysroot.base}/sub" );
+    set_setting( "sysroot.unpack", "false {ARGS:1}" );
+    set_setting( "sysroot.setup", "false" );
 
     provision_sysroot();
 
-    /* dryrun must not create sysroot.base */
+    /* dryrun must not create sysroot.base or execute unpack/setup */
     ASSERT_EQ( false, dir_readable( base_dir ) );
 
     ctx_cleanup();
 
+    /* Dry run with uncached archive */
     remove( archive_file );
+
+    ctx_init();
+    g_ctx.dryrun = true;
+    set_setting( "settings.cache", cache_dir );
+    set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.download", "false {ARGS:1} {ARGS:2}" );
+    set_setting( "sysroot.checksum", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" );
+    set_setting( "sysroot.base", base_dir );
+    set_setting( "sysroot.dir", "{sysroot.base}/sub" );
+    set_setting( "sysroot.unpack", "false {ARGS:1}" );
+    set_setting( "sysroot.setup", "false" );
+
+    provision_sysroot();
+
+    ASSERT_EQ( false, file_readable( archive_file ) );
+    ASSERT_EQ( false, dir_readable( base_dir ) );
+
+    ctx_cleanup();
+
     rmdir( cache_dir );
     rmdir( base_dir );
+
+    PASS();
+}
+
+TEST test_provision_sysroot_unpack_and_setup( void )
+{
+    char const * cache_dir = "test_provision_run_cache_tmp";
+    char const * archive_file = "test_provision_run_cache_tmp/sysroot.tar.xz";
+    char const * base_dir = "test_provision_run_base_tmp";
+    char const * sub_dir = "test_provision_run_base_tmp/sub";
+    char const * setup_marker = "test_provision_run_base_tmp/sub/setup_done";
+    FILE * fh;
+
+    remove( setup_marker );
+    rmdir( sub_dir );
+    rmdir( base_dir );
+    remove( archive_file );
+    rmdir( cache_dir );
+
+    ASSERT_EQ( 0, mkdir( cache_dir, 0755 ) );
+    fh = fopen( archive_file, "wb" );
+    ASSERT( fh != NULL );
+    ASSERT_EQ( 3, fwrite( "abc", 1, 3, fh ) );
+    fclose( fh );
+
+    ctx_init();
+    set_setting( "settings.cache", cache_dir );
+    set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.base", base_dir );
+    set_setting( "sysroot.dir", "{sysroot.base}/sub" );
+    set_setting( "sysroot.unpack", "test -f {ARGS:1} && mkdir -p {sysroot.dir}" );
+    set_setting( "sysroot.setup", "touch {sysroot.dir}/setup_done" );
+
+    provision_sysroot();
+
+    ASSERT_EQ( true, sysroot_exists() );
+    ASSERT_EQ( true, file_readable( setup_marker ) );
+
+    ctx_cleanup();
+
+    remove( setup_marker );
+    rmdir( sub_dir );
+    rmdir( base_dir );
+    remove( archive_file );
+    rmdir( cache_dir );
 
     PASS();
 }
@@ -303,8 +371,12 @@ TEST test_provision_sysroot_errors( void )
 {
     char const * cache_dir = "test_provision_err_cache_tmp";
     char const * archive_file = "test_provision_err_cache_tmp/sysroot.tar.xz";
+    char const * base_dir = "test_provision_err_base_tmp";
+    char const * sub_dir = "test_provision_err_base_tmp/sub";
     FILE * fh;
 
+    rmdir( sub_dir );
+    rmdir( base_dir );
     remove( archive_file );
     rmdir( cache_dir );
 
@@ -327,13 +399,54 @@ TEST test_provision_sysroot_errors( void )
     ASSERT_EQ( EXIT_FAILURE, run_provision_expect_exit() );
     ctx_cleanup();
 
-    /* Neither sysroot.base nor sysroot.dir configured -> EXIT_FAILURE */
+    /* Missing sysroot.base -> EXIT_FAILURE */
     ctx_init();
     set_setting( "settings.cache", cache_dir );
     set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.dir", sub_dir );
     ASSERT_EQ( EXIT_FAILURE, run_provision_expect_exit() );
     ctx_cleanup();
 
+    /* Missing sysroot.dir -> EXIT_FAILURE */
+    ctx_init();
+    set_setting( "settings.cache", cache_dir );
+    set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.base", base_dir );
+    ASSERT_EQ( EXIT_FAILURE, run_provision_expect_exit() );
+    ctx_cleanup();
+
+    /* Missing sysroot.unpack -> EXIT_FAILURE */
+    ctx_init();
+    set_setting( "settings.cache", cache_dir );
+    set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.base", base_dir );
+    set_setting( "sysroot.dir", "{sysroot.base}/sub" );
+    ASSERT_EQ( EXIT_FAILURE, run_provision_expect_exit() );
+    ctx_cleanup();
+
+    /* Failing sysroot.unpack -> EXIT_FAILURE */
+    ctx_init();
+    set_setting( "settings.cache", cache_dir );
+    set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.base", base_dir );
+    set_setting( "sysroot.dir", "{sysroot.base}/sub" );
+    set_setting( "sysroot.unpack", "false" );
+    ASSERT_EQ( EXIT_FAILURE, run_provision_expect_exit() );
+    ctx_cleanup();
+
+    /* Failing sysroot.setup -> EXIT_FAILURE */
+    ctx_init();
+    set_setting( "settings.cache", cache_dir );
+    set_setting( "sysroot.url", "https://example.com/sysroot.tar.xz" );
+    set_setting( "sysroot.base", base_dir );
+    set_setting( "sysroot.dir", sub_dir );
+    set_setting( "sysroot.unpack", "mkdir -p {sysroot.dir}" );
+    set_setting( "sysroot.setup", "false" );
+    ASSERT_EQ( EXIT_FAILURE, run_provision_expect_exit() );
+    ctx_cleanup();
+
+    rmdir( sub_dir );
+    rmdir( base_dir );
     remove( archive_file );
     rmdir( cache_dir );
 
@@ -347,5 +460,6 @@ SUITE( sysroot_suite )
     RUN_TEST( test_sysroot_verify_checksum );
     RUN_TEST( test_provision_sysroot_already_exists );
     RUN_TEST( test_provision_sysroot_dryrun );
+    RUN_TEST( test_provision_sysroot_unpack_and_setup );
     RUN_TEST( test_provision_sysroot_errors );
 }

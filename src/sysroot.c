@@ -156,10 +156,40 @@ static void sysroot_archive_cleanup( sysroot_archive_t * archive )
     cleanup( &archive->basename );
 }
 
+static bool run_sysroot_command( char const * key, string * command )
+{
+    int rc;
+
+    if ( g_ctx.dryrun )
+    {
+        SOLOG( INFO, "[dryrun] %s", first( command ) );
+        return true;
+    }
+
+    rc = system( first( command ) );
+
+    if ( rc != 0 )
+    {
+        SOLOG( ERR, "sysroot.%s command failed (exit %d): %s", key, rc, first( command ) );
+        return false;
+    }
+
+    return true;
+}
+
+static void append_archive_basename( string * path, string * basename )
+{
+    if ( size( path ) > 0 && *last( path ) != '/' && *last( path ) != '\\' )
+    {
+        push_fmt( path, "/" );
+    }
+
+    push_fmt( path, first( basename ) );
+}
+
 void sysroot_archive_download( sysroot_archive_t * archive )
 {
     string command;
-    int rc;
 
     if ( ! archive )
     {
@@ -175,14 +205,22 @@ void sysroot_archive_download( sysroot_archive_t * archive )
         goto fail;
     }
 
-    rc = system( first( &command ) );
-    cleanup( &command );
+    if ( g_ctx.dryrun )
+    {
+        SOLOG( INFO, "[dryrun] %s", first( &command ) );
+        cleanup( &command );
+        append_archive_basename( &archive->path, &archive->basename );
+        return;
+    }
 
-    if ( rc != 0 )
+    if ( ! run_sysroot_command( "download", &command ) )
     {
         SOLOG( ERR, "Download of sysroot archive '%s' failed", first( &archive->basename ) );
+        cleanup( &command );
         goto fail;
     }
+
+    cleanup( &command );
 
     sysroot_archive_cleanup( archive );
     *archive = sysroot_cache_file();
@@ -206,6 +244,8 @@ void provision_sysroot( void )
     string checksum_expected;
     string base;
     string dir;
+    string command;
+    bool skip_checksum;
     bool checksum_ok;
 
     if ( sysroot_exists() )
@@ -213,14 +253,19 @@ void provision_sysroot( void )
         return;
     }
 
+    init( &base );
+    init( &dir );
+    init( &command );
+
     archive = sysroot_cache_file();
 
     if ( size( &archive.path ) == 0 )
     {
         SOLOG( ERR, "Could not resolve sysroot archive path (check sysroot.url and settings.cache)" );
-        sysroot_archive_cleanup( &archive );
-        exit( EXIT_FAILURE );
+        goto fail;
     }
+
+    skip_checksum = g_ctx.dryrun && ( size( &archive.basename ) > 0 );
 
     if ( size( &archive.basename ) > 0 )
     {
@@ -228,35 +273,42 @@ void provision_sysroot( void )
     }
 
     checksum_expected = get_setting_expanded( "sysroot", "checksum" );
-    checksum_ok = sysroot_verify_checksum( first( &archive.path ), first( &checksum_expected ) );
-    cleanup( &checksum_expected );
 
-    if ( ! checksum_ok )
+    if ( skip_checksum )
     {
-        SOLOG( ERR, "Checksum error in '%s', sysroot provision denied", first( &archive.path ) );
-        sysroot_archive_cleanup( &archive );
-        exit( EXIT_FAILURE );
+        if ( size( &checksum_expected ) > 0 )
+        {
+            SOLOG( INFO, "[dryrun] verify sha256 '%s' == %s", first( &archive.path ), first( &checksum_expected ) );
+        }
+
+        cleanup( &checksum_expected );
+    }
+    else
+    {
+        checksum_ok = sysroot_verify_checksum( first( &archive.path ), first( &checksum_expected ) );
+        cleanup( &checksum_expected );
+
+        if ( ! checksum_ok )
+        {
+            SOLOG( ERR, "Checksum error in '%s', sysroot provision denied", first( &archive.path ) );
+            goto fail;
+        }
     }
 
     base = get_setting_expanded( "sysroot", "base" );
-    dir = get_setting_expanded( "sysroot", "dir" );
-
-    if ( size( &base ) == 0 && size( &dir ) > 0 )
-    {
-        push_fmt( &base, first( &dir ) );
-    }
-    else if ( size( &dir ) == 0 && size( &base ) > 0 )
-    {
-        push_fmt( &dir, first( &base ) );
-    }
 
     if ( size( &base ) == 0 )
     {
-        SOLOG( ERR, "Neither sysroot.base nor sysroot.dir is configured" );
-        cleanup( &base );
-        cleanup( &dir );
-        sysroot_archive_cleanup( &archive );
-        exit( EXIT_FAILURE );
+        SOLOG( ERR, "sysroot.base is not configured" );
+        goto fail;
+    }
+
+    dir = get_setting_expanded( "sysroot", "dir" );
+
+    if ( size( &dir ) == 0 )
+    {
+        SOLOG( ERR, "sysroot.dir is not configured" );
+        goto fail;
     }
 
     {
@@ -285,28 +337,48 @@ void provision_sysroot( void )
     else if ( mkdir_p( first( &base ), 0755 ) != 0 )
     {
         SOLOG( ERR, "Failed to create sysroot.base directory '%s'", first( &base ) );
-        cleanup( &base );
-        cleanup( &dir );
-        sysroot_archive_cleanup( &archive );
-        exit( EXIT_FAILURE );
+        goto fail;
     }
 
-    /*
-     * 6. Expand `sysroot.unpack` with `{ARG:1}` = archive path,
-     *    and execute (or log if `g_ctx.dryrun`); `exit( EXIT_FAILURE )` on failure.
-     * 7. If `sysroot.setup` is non-empty, expand and execute (or log if `g_ctx.dryrun`);
-     *    `exit( EXIT_FAILURE )` on failure.
-     */
+    command = get_setting_expanded( "sysroot", "unpack", first( &archive.path ) );
+
+    if ( size( &command ) == 0 )
+    {
+        SOLOG( ERR, "Empty sysroot.unpack command" );
+        goto fail;
+    }
+
+    if ( ! run_sysroot_command( "unpack", &command ) )
+    {
+        goto fail;
+    }
+
+    cleanup( &command );
+    init( &command );
+
+    command = get_setting_expanded( "sysroot", "setup" );
+
+    if ( size( &command ) > 0 && ! run_sysroot_command( "setup", &command ) )
+    {
+        goto fail;
+    }
+
     if ( ! g_ctx.dryrun && ! sysroot_exists() )
     {
         SOLOG( ERR, "Sysroot directory '%s' does not exist after provisioning", first( &dir ) );
-        cleanup( &base );
-        cleanup( &dir );
-        sysroot_archive_cleanup( &archive );
-        exit( EXIT_FAILURE );
+        goto fail;
     }
 
+    cleanup( &command );
     cleanup( &base );
     cleanup( &dir );
     sysroot_archive_cleanup( &archive );
+    return;
+
+fail:
+    cleanup( &command );
+    cleanup( &base );
+    cleanup( &dir );
+    sysroot_archive_cleanup( &archive );
+    exit( EXIT_FAILURE );
 }
